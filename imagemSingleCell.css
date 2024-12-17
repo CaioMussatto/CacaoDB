@@ -1,0 +1,140 @@
+
+.container-svg {
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    background: linear-gradient(to bottom, #008080, #ffff, #ffff, #ffff, #ffff, #ffff, #ffff); /* Gradiente de cima para baixo */
+}
+
+.box {
+    display: flex;
+}
+
+.human {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    margin: 20px;
+    position: static;
+}
+
+.human img {
+    max-width: 100%;
+    margin-top: 50px;
+}
+
+.left {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.leftElement {
+    margin: -10px;
+    text-align: center;
+    position: relative;
+    left: 50px;
+    bottom: 40px;
+}
+
+.leftElement img {
+    max-width: 100%;
+}
+
+.right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.rightElement {
+    margin: -10px;
+    text-align: center;
+    position: relative;
+    left: -22px;
+    bottom: 35px;
+}
+
+.rightElement img {
+    max-width: 100%;
+}
+
+.mouse {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    position: static;
+}
+
+.mouse img {
+    max-width: 100%;
+    margin-top: 50px;
+}
+
+.leftElement2 {
+    margin: -12px;
+    text-align: center;
+    position: relative;
+    left: 35px;
+    bottom: 35px;
+}
+
+.leftElement2 img {
+    max-width: 100%;
+}
+
+.rightElement2 {
+    margin: -25px;
+    text-align: center;
+    position: relative;
+    left: -20px;
+    bottom: 18px;
+}
+
+.rightElement2 img {
+    max-width: 100%;
+}
+
+img {
+    max-width: 100%;
+    height: auto; /* Mantém a proporção da imagem */
+    min-width: 50px;
+}
+.human + .mouse {
+    margin-left: 50px; /* Ajuste a quantidade de espaço conforme necessário */
+    min-width: 200px;
+}
+.element-button {
+    background: transparent; /* Fundo transparente */
+    border: none; /* Remover borda */
+    padding: 0; /* Remover preenchimento interno */
+    cursor: pointer; /* Altera o cursor para uma mão quando o mouse estiver sobre o botão */
+    height: min-content; /* Mantem a altura do botão semelhante ao da imagem svg */
+}
+.element-button:hover {
+    transform: scale(1.10); /* Aumenta em 5% quando o mouse estiver sobre o botão */
+    transition: transform 0.3s; /* Adiciona uma transição suave para a transformação */
+    border-color: #ffffff00 !important;
+}
+.element-button:focus {
+    border-color: #ffffff00 !important;
+    outline: none !important;
+    border-inline-color: none!important;
+}
+
+.human, .mouse {
+    flex: 1; /* Os elementos ocupam uma parte igual do espaço disponível */
+    max-width: 50%; /* Define uma largura máxima para evitar que eles fiquem muito largos */
+}
+
+/* Define o ponto de quebra usando uma media query para dispositivos móveis */
+@media screen and (max-width: 768px) {
+    .box {
+        flex-direction: column; /* Altera a direção do flexbox para vertical */
+    }
+
+    .human, .mouse {
+        max-width: 100%; /* Recupera a largura máxima para que eles ocupem toda a largura da tela */
+    }
+}

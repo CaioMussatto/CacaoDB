@@ -1,0 +1,28 @@
+library(dplyr)
+
+# Carregar os dados do arquivo CSV
+deg_data <- read.csv("DEGS_SIGNIFICATIVOS_PACIENTE_A6.csv")
+
+# Adicionar coluna de regula??o (up ou down)
+deg_data <- deg_data %>%
+  mutate(
+    regulation = case_when(
+      avg_log2FC > 0 ~ "up",
+      avg_log2FC < 0 ~ "down",
+      TRUE ~ NA_character_ # Atribuir NA para valores que n?o atendem ?s condi??es
+    )
+  )
+
+# Adicionar coluna de dist?ncia de Manhattan e ordenar os dados
+deg_data <- deg_data %>%
+  mutate(
+    # Calcular a dist?ncia de Manhattan somente para valores v?lidos de p_val_adj
+    manhattan_distance = case_when(
+      p_val_adj > 0 ~ abs(avg_log2FC) + abs(-log10(p_val_adj)),
+      TRUE ~ NA_real_ # Atribuir NA para valores inv?lidos
+    )
+  ) %>%
+  arrange(manhattan_distance)
+
+# Salvar os dados atualizados em um novo arquivo CSV
+write.csv(deg_data, "DEGS_SIGNIFICATIVOS_PACIENTE_A6.csv", row.names = FALSE)

@@ -1,0 +1,102 @@
+.container-svg {
+    text-align: center;
+    display: flex;
+    justify-content: center; /* Centraliza os elementos horizontalmente */
+    align-items: flex-end;
+    background: linear-gradient(to bottom, #008080, #ffff, #ffff, #ffff, #ffff, #ffff, #ffff); /* Gradiente */
+    padding: 20px; /* Adiciona um espaçamento interno */
+}
+
+.box {
+    display: flex;
+    justify-content: space-around; /* Distribui igualmente entre os elementos */
+    align-items: center; /* Centraliza verticalmente */
+    gap: 20px; /* Espaçamento uniforme entre os elementos */
+}
+
+.human,
+.mouse {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    flex: 1; /* Divide o espaço igualmente */
+    margin: 0 10px; /* Ajuste menor de espaçamento */
+}
+
+.human img,
+.mouse img {
+    max-width: 100%;
+    height: auto;
+    margin-top: 50px;
+}
+
+.left, .right {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px; /* Espaçamento vertical consistente */
+}
+
+.leftElement,
+.rightElement,
+.leftElement2,
+.rightElement2 {
+    margin: 0; /* Remove margens negativas */
+    text-align: center;
+    position: relative;
+    bottom: 35px;
+}
+
+.leftElement img,
+.rightElement img,
+.leftElement2 img,
+.rightElement2 img {
+    max-width: 100%;
+}
+
+img {
+    max-width: 100%;
+    height: auto;
+    min-width: 50px;
+}
+
+/* Centraliza e ajusta a distância */
+.human + .mouse {
+    margin-left: 0; /* Remover margens desnecessárias */
+}
+
+.element-button {
+    background: transparent; /* Fundo transparente */
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    height: min-content;
+}
+
+.element-button:hover {
+    transform: scale(1.10);
+    transition: transform 0.3s;
+    border-color: #ffffff00 !important;
+}
+
+.element-button:focus {
+    border-color: #ffffff00 !important;
+    outline: none !important;
+}
+
+.human, .mouse {
+    flex: 1;
+    max-width: 45%; /* Ajusta o tamanho máximo */
+}
+
+/* Para dispositivos móveis */
+@media screen and (max-width: 768px) {
+    .box {
+        flex-direction: column;
+    }
+
+    .human, .mouse {
+        max-width: 100%;
+    }
+}
