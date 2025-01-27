@@ -1,6 +1,6 @@
 
 pacotes = c("shiny","shinyWidgets", "shinyjs","shinythemes","stringr","dplyr","ggrepel","ggplot2",
-            "cowplot","gridExtra","patchwork","RMariaDB","shinycssloaders","shinyalert")
+            "cowplot","gridExtra","patchwork","shinycssloaders","shinyalert")
 
 # Run the following command to verify that the required packages are installed. If some package
 # is missing, it will be installed automatically
@@ -22,15 +22,15 @@ library(ggplot2)
 library(cowplot)
 library(gridExtra)
 library(patchwork)
-library(RMariaDB)
 library(patchwork)
 library(shinycssloaders)
-options(shiny.port = 5230)
+
 organism_list <- c('None','Mus Musculus','Homo Sapiens')
 #source(paste(getwd(),'/Mysql_datas.R',sep=''))
 source(paste(getwd(),'/Page1.R',sep=''))
 gene_anno <- readRDS('gene_list.rds')
 
+source(paste(getwd(),'/Microarray_codes.R',sep=''))
 #source(paste(getwd(),'/homepage.R',sep=''))
 # if(exists('gene_list')){
 #   gene_list <- readRDS('gene_list.rds')
@@ -59,6 +59,39 @@ if(!exists('table_to_filter_rnaseq')){
   table_to_filter_rnaseq <- readRDS('table_to_filter_rnaseq.rds')
 }
 
+
+if(!exists('Deg_data_list_Microarray')){
+  Deg_data_list_Microarray <- readRDS('Deg_data_list_Microarray.rds')
+}
+
+if(!exists('count_data_list_Microarray')){
+  count_data_list_Microarray <- readRDS('count_data_list_Microarray.rds')
+}
+
+if(!exists('Sample_annotation_mca_SHINY')){
+  Sample_annotation_mca_SHINY <- readRDS('Sample_annotation_mca_SHINY.rds')
+}
+
+if(!exists('table_to_filter_Microarray')){
+  table_to_filter_Microarray <- readRDS('table_to_filter_Microarray.rds')
+}
+
+
+
+choice_gse_codes_microArray <- unique(table_to_filter_Microarray$Code_GSE)
+choice_authors_microarray <- unique(table_to_filter_Microarray$Autor)
+choice_pmid_codes_microArray <- unique(table_to_filter_Microarray$PMID)
+choice_tissue_names_microarray <- unique(table_to_filter_Microarray$Tissue_name)
+choice_time_days_microarray <- unique(table_to_filter_Microarray$Time_days)
+choice_time_days_microarray <- choice_time_days_microarray[-which(is.na(choice_time_days_microarray))]
+choice_tissues_microarray <- unique(table_to_filter_Microarray$Tissue)
+choice_tumors_microarray <- unique(table_to_filter_Microarray$Tumor)
+choice_model_microarray <- unique(table_to_filter_Microarray$Model)
+choice_organism_microarray <- unique(table_to_filter_Microarray$Organism)
+choice_years_microarray <- unique(table_to_filter_Microarray$Year)
+choice_genders_mca <- unique(table_to_filter_Microarray$Sex)
+
+
 library(shiny)
 library(shinydashboard)
 library(shinydashboardPlus)
@@ -67,7 +100,7 @@ library(shinyWidgets)
 source('RNA_seq_codes.R')
 
  if(!exists('tissue_list')){
- tissue_list <- readRDS('todos.rds')
+ tissue_list <- readRDS('todos.RDS')
  }
 
 
@@ -234,25 +267,4 @@ plot_gene_analysis <- function(expr_data, gene_name, cell.colors) {
 
 
 
-connect.DB<- function(){
-  db.connect <- dbConnect(MariaDB(),dbname='cacaoDB',host='localhost',
-                          user='root', password='$Ilovesinglecell*',
-                          client.flag= CLIENT_MULTI_STATEMENTS)
-  return(db.connect)
-}
 
-strategies <-list()
-
-strategies[['rnaseq']] <- function(organism, filter, gene){ 
-
-  print('organism :')
-  print(organism)
-    print('filter :')
-  print(filter)
-    print('gene :')
-  print(gene)
-}
-strategies[['microarray']] <- function(organism, filter, gene){print('MicroArray')}
-strategies[['singlecell']] <- function(organism, filter, gene){print('Single-cell')}
-
-strategies$rnaseq(organism='Musmuslus',filter=c(1,2,3),gene='Depp1')

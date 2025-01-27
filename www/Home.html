@@ -1,6 +1,5 @@
 <div class="jumbotron jumbotron-fluid gradient-cacao">
-    <div class="container">
-        
+    <div class="container text-center">
         <ul class="nav justify-content-center tab">
             <li class="nav-item active">
                 {{home_link}}
@@ -18,57 +17,53 @@
                 {{about_us_link}}
             </li>
         </ul>
-
-        <center>
-
-            <h1 class="display-4">Welcome to CaCaOdb</h1>
-            <p class="lead">The largest cancer-associated cachexia database.</p>
-
-        </center>
-
+        <h1 class="display-4">Welcome to CaCaOdb</h1>
+        <p class="lead">The largest cancer-associated cachexia database.</p>
     </div>
-
 </div>
-<div class="tabcontent" id="home-tab-pane" style="display:block">
-    <div>
-        <center>
-            <h2>
-                <b>
-                    Web Site Under Contruction!
-                </b>
-            </h2>
-            <img src="./cacao.png" alt="CaCao" width="350" height="120" >
-        </center>
+
+<div class="tabcontent" id="home-tab-pane" style="display: block;">
+    <div class="container text-center">
+        <h2>
+            <b>Web Site Under Construction!</b>
+        </h2>
+        <img src="./cacao.png" alt="CaCao" class="responsive-image">
     </div>
     {{homeBody}}
 </div>
-<div class="tabcontent" id="microArray-tab-pane" style="display:none">{{microArrayBody}}</div>
-<div class="tabcontent" id="rnaSeq-tab-pane" style="display:none; max-width: 100%;">{{rnaSeqBody}}</div>
-<div class="tabcontent" id="ScrnaSeq-tab-pane" style="display:none">{{SingleCellBody}}</div>
-<div class="tabcontent" id="About-tab-pane" style="display:none">{{AboutUsBody}}</div>
-<div class="tabcontent" id="sc_analysis-tab-pane" style="display:none">
-  {{sc_analysis_body}}
-   </div>
 
-
-<div class="modal" id="exampleModalCenter" aria-labelledby="exampleModalCenterTitle"  aria-hidden="true" >
-  <div class="modal-dialog modal-fullscreen">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title h4" id="exampleModalFullscreenLabel">Full screen modal</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        {{render_filter_ui}}
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-        {{ok_btn_filter}}
-      </div>
-    </div>
-  </div>
+<div class="tabcontent" id="microArray-tab-pane" style="display: none;">
+    {{microArrayBody}}
+</div>
+<div class="tabcontent" id="rnaSeq-tab-pane" style="display: none;">
+    {{rnaSeqBody}}
+</div>
+<div class="tabcontent" id="ScrnaSeq-tab-pane" style="display: none;">
+    {{SingleCellBody}}
+</div>
+<div class="tabcontent" id="About-tab-pane" style="display: none;">
+    {{AboutUsBody}}
+</div>
+<div class="tabcontent" id="sc_analysis-tab-pane" style="display: none;">
+    {{sc_analysis_body}}
 </div>
 
-
+<div class="modal" id="exampleModalCenter" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+    <div class="modal-dialog modal-fullscreen">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title h4" id="exampleModalFullscreenLabel">Full screen modal</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                {{render_filter_ui}}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                {{ok_btn_filter}}
+            </div>
+        </div>
+    </div>
+</div>
 
 <div>{{footer}}</div>

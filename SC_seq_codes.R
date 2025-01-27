@@ -1,65 +1,92 @@
 ScSeq.ui <- function() {
   ui <- div(
-    div(class = 'centered-filter-option',
-        fluidRow(
-          column(width = 4, 
-                 div(verbatimTextOutput("tissue_selected"))
-          ),
-          column(width = 4, 
-                 shinyjs::hidden(
-                   pickerInput(
-                     inputId = "gene.m.sc",
-                     label = "Select gene",
-                     choices = NULL, # Inicialmente vazio
-                     options = list(
-                       'style' = "btn btn-primary p-2 mt-1",
-                       'live-search' = TRUE)
-                   )),
-                 shinyjs::hidden(pickerInput(
-                   inputId = "gene.h.sc",
-                   label = "Select gene",
-                   choices = NULL,
-                   options = list(
-                     'style' = "btn btn-primary p-2 mt-1",
-                     'live-search' = TRUE)
-                 ))
-          ),
-          column(width = 4, 
-                 div(
-                   fluidRow(
-                     column(width = 6, class = 'mt-2', 
-                            h5(tags$b('Run')),
-                            actionButton(inputId = 'render_plot_SC', 
-                                         'Plot', 
-                                         icon = icon('bar-chart'), 
-                                         class = "btn-success mt-1")
-                     ),
-                     column(width = 6, class = 'mt-2', 
-                            h5(tags$b('Download')),
-                            downloadButton(outputId = 'download_plot', 
-                                           label = 'Download Image', 
-                                           class = "btn-primary mt-1")
-                     )
-                   )
-                 )
+    # Barra de seleção e botões
+    div(
+      class = "bg-light p-3 mb-4 mx-auto", # Fundo claro, espaçamento interno e centralizado
+      style = "width: 80%; border-radius: 8px; text-align: center;", # Centraliza a barra e define a largura
+      fluidRow(
+        column(
+          width = 4,
+          div(
+            class = "d-flex flex-column align-items-center", # Centraliza verticalmente
+            h5(tags$b("Tissue Selected")),
+            verbatimTextOutput("tissue_selected")
+          )
+        ),
+        column(
+          width = 4,
+          div(
+            class = "d-flex flex-column align-items-center",
+            h5(tags$b("Select Gene")),
+            shinyjs::hidden(
+              pickerInput(
+                inputId = "gene.m.sc",
+                label = NULL,
+                choices = NULL, # Inicialmente vazio
+                options = list(
+                  'style' = "btn btn-primary p-2 mt-1",
+                  'live-search' = TRUE
+                )
+              )
+            ),
+            shinyjs::hidden(
+              pickerInput(
+                inputId = "gene.h.sc",
+                label = NULL,
+                choices = NULL,
+                options = list(
+                  'style' = "btn btn-primary p-2 mt-1",
+                  'live-search' = TRUE
+                )
+              )
+            )
+          )
+        ),
+        column(
+          width = 4,
+          div(
+            class = "d-flex justify-content-around align-items-center", # Alinha horizontalmente os botões
+            div(
+              class = "text-center",
+              h5(tags$b("Run")),
+              actionButton(
+                inputId = 'render_plot_SC',
+                'Plot',
+                icon = icon('bar-chart'),
+                class = "btn-success mt-1"
+              )
+            ),
+            div(
+              class = "text-center",
+              h5(tags$b("Download")),
+              downloadButton(
+                outputId = 'download_plot',
+                label = 'Download Image',
+                class = "btn-primary mt-1"
+              )
+            )
           )
         )
+      )
     ),
-    br(),
-    br(),
+    
+    # Gráfico centralizado com a mesma largura
     fluidRow(
-      class = "justify-content-center align-items-center", # Centraliza horizontal e verticalmente
       div(
-        class = "col-12 d-flex justify-content-center align-items-center", # Centralização adicional para a div
-        shinyjs::hidden(
-          shinycssloaders::withSpinner(
-            plotOutput(
-              outputId = "main_plot_SCrnaseq", 
-              width = "1050px", 
-              height = "700px"
-            ),
-            type = 6, # Tipo do spinner
-            id = 'spinnersc' # ID do spinner
+        class = "d-flex justify-content-center align-items-center mx-auto", # Centraliza o container
+        style = "width: 80%; margin: 0 auto;", # Centraliza e define largura igual à barra branca
+        column(
+          width = 12, # Largura total dentro do contêiner
+          shinyjs::hidden(
+            shinycssloaders::withSpinner(
+              plotOutput(
+                outputId = "main_plot_SCrnaseq",
+                width = "100%", # Ajusta para respeitar o container
+                height = "650px"
+              ),
+              type = 6, # Tipo do spinner
+              id = 'spinnersc' # ID do spinner
+            )
           )
         )
       )
@@ -70,6 +97,7 @@ ScSeq.ui <- function() {
   
   return(ui)
 }
+
 
 
 generate_plots_ScRNAseq <- function(tissue='', organism='', gene_select='') {

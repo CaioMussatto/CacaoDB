@@ -51,7 +51,7 @@ shinyUI(
       htmlTemplate("www/Home.html",
                    footer = htmlTemplate("www/Footer.html"),
                    homeBody= htmlTemplate("www/Home_body.html",
-                                          sc_button = actionButton(
+                                          sc_button = actionBttn(
                                             inputId = "sc_page", 
                                             label = img(src = "svg/scrnaseq.svg"), 
                                             class = 'home-button', 
@@ -62,12 +62,21 @@ shinyUI(
                                           label = img(src='svg/rnaseq.svg'),
                                           class = 'home-button',
                                           onclick = "openPage(event, 'rnaSeq-tab-pane')"
+                                          ),
+                                          micro_button = actionBttn(
+                                            inputId = 'micro_page',
+                                            label = img(src='svg/Microarray.svg'),
+                                            class = 'home-button',
+                                            onclick = "openPage(event, 'microArray-tab-pane')"
                                           )
                    ),
+                   render_filter_ui_microarray = render_filter_ui_microarray(),
+                   microArrayBody=   microArray.ui(),
+                   micro_array_link = actionLink(inputId = "microArrayLink", "Micro-Array", class = "nav-link", onclick = "openPage(event, 'microArray-tab-pane')"), 
+                   ok_btn_filter_mca = actionButton('ok_filter_mca','OK',icon=icon('OK'),class = "btn btn-success", `data-bs-dismiss`="modal"),
                    # microArrayBody=   page1.ui(),
                    # rnaSeqBody = rnaSeq.ui(),
                    # render_filter_ui = render_filter_ui(),
-                   microArrayBody=   htmlTemplate("www/microarray.html"),
                    rnaSeqBody = rnaSeq.ui(),
                    AboutUsBody = htmlTemplate('www/About.html'), 
                    render_filter_ui = render_filter_ui(),
@@ -113,7 +122,6 @@ shinyUI(
                    sc_analysis_body= ScSeq.ui(),
                    ok_btn_filter = actionButton('ok_filter','OK',icon=icon('OK'),class = "btn btn-success", `data-bs-dismiss`="modal"),        # links
                    home_link = actionLink(href = "#", "Home", class = "nav-link ", inputId = "homeLink", onclick = "openPage(event, 'home-tab-pane')"),
-                   micro_array_link = actionLink(inputId = "microArrayLink", "Micro-Array", class = "nav-link disabled ", onclick = "openPage(event, 'microArray-tab-pane')"), #
                    rna_seq_link = actionLink(href = "#", "RNA-seq", class = "nav-link ", inputId = "rnaSeqLink", onclick = "openPage(event, 'rnaSeq-tab-pane')"), #
                    sc_rna_seq_link = actionLink(href = "#", "ScRNA-seq", class = "nav-link ", inputId = "scRnaSeqLink", onclick = "openPage(event, 'ScrnaSeq-tab-pane')"), #
                    about_us_link = actionLink(href = "#", "Our team", class = "nav-link ", inputId = "aboutLink", onclick = "openPage(event, 'About-tab-pane')") #

@@ -4,7 +4,6 @@
 render_filter_ui <- function(input,output,session ){
   body_filter <- box(
     width = 12,
-    #background = "gray", #red, yellow, aqua, blue, light-blue, green, navy, teal, olive, lime, orange, fuchsia, purple, maroon, black, gray
     fluidRow(
       width= 12,
       column(4,align="left",

@@ -145,7 +145,7 @@ shinyServer(function(input, output,session) {
           incProgress(0.6)
           
           # Salva o gráfico
-          ggsave(file, plot, dpi = 500)
+          ggsave(file, plot, dpi = 500, width = 15, height = 10)
           
           # Incrementa para finalizar
           incProgress(1)
@@ -177,7 +177,7 @@ shinyServer(function(input, output,session) {
           incProgress(0.6)
           
           # Salva o gráfico
-          ggsave(file, plot, dpi = 500, width = 12, height = 12)
+          ggsave(file, plot, dpi = 500, width = 15, height = 10)
           
           # Increment para finalizar
           incProgress(1)
@@ -186,7 +186,36 @@ shinyServer(function(input, output,session) {
     }
   )
   
-  
+  output$download_plot_mca <- downloadHandler(
+    filename = function() {
+      gene_input <- str_to_title(input$gene.m_mca)
+      organims <- str_to_title(input$organism_mca)
+      paste0(gene_input, "_", organims, ".png")
+    },
+    content = function(file) {
+      withProgress(
+        message = 'Generating plot...',
+        detail = 'Please wait while the file is being prepared.',
+        value = 0, {
+          # Increment progress before generating the plot
+          incProgress(0.3)
+          
+          gene_input <- input$gene.m_mca
+          
+          # Gera o gráfico utilizando generate_plots_RNAseq
+          plot <- generate_plots_Microarray(input$organism_mca, filtered_names_mca(), gene_select = gene_input)
+          # Increment progress during saving the file
+          incProgress(0.6)
+          
+          # Salva o gráfico
+          ggsave(file, plot, dpi = 500, width = 15, height = 10)
+          
+          # Increment para finalizar
+          incProgress(1)
+        }
+      )
+    }
+  )
   
   
   
@@ -421,6 +450,120 @@ shinyServer(function(input, output,session) {
     output$main_plot_rnaseq <- renderPlot(NULL)
   })
   
+  observeEvent(input$micro_page, {
+    print('Link to Microarray  page !!!')
+  })
+  
+  
+  
+  observeEvent(input$organism_mca,
+               {
+                 if(input$organism_mca=='Mus Musculus'){
+                   shinyjs::show("gene.m_mca") 
+                   shinyjs::hide('gene.h_mca')
+                 }else if(input$organism_mca=='Homo Sapiens'){
+                   shinyjs::hide("gene.m_mca") 
+                   shinyjs::show('gene.h_mca')
+                 }else{
+                   shinyjs::hide("gene.m_mca") 
+                   shinyjs::hide('gene.h_mca')
+                 } },ignoreInit = T, once = F,ignoreNULL=FALSE )
+  
+  
+  
+  
+  
+  
+  observeEvent(input$ipt_YEAR_slider_mca,{
+    filter_year_microarray(input,output,session)
+  })
+  observeEvent(input$ipt_TISSUE_NAME_slider_mca,{
+    filter_tissue_name_microarray(input,output,session)
+  })
+  observeEvent(input$ipt_PMID_slider_mca,{
+    filter_PMID_microarray(input,output,session)
+  })
+  observeEvent(input$ipt_TIME_slider_mca,{
+    filter_time_days_microarray(input,output,session)
+  })
+  observeEvent(input$ipt_GENDER_slider_mca,{
+    filter_gender_microarray(input,output,session)
+  })
+  observeEvent(input$ipt_GSE_slider_mca,{
+    filter_GSE_microarray(input,output,session)
+  })
+  observeEvent(input$ipt_AUTHORS_slider_mca,{
+    filter_authors_microarray(input,output,session)
+  })
+  observeEvent(input$ipt_TISSUE_slider_mca,{
+    filter_tissue_microarray(input,output,session)
+  })
+  
+  observeEvent(input$ipt_TUMOR_slider_mca,{
+    filter_tumor_microarray(input,output,session)
+  })
+  
+  
+  set_filtered_controls_mca <- function(value) {
+    filtered_controls_mca(value)
+  }
+  
+  get_filtered_controls_mca <- reactive({filtered_controls()})
+  
+  
+  filtered_names_mca <- reactive({
+    filter_table_mca(df_tables_info = df_filter_mca(), 
+                     author_list = choice_authors_render_MM_mca(),
+                     year_list = choice_years_render_MM_mca(),
+                     gse_code_list = choice_gse_codes_render_MM_mca(),
+                     pmid_code_list = choice_pmid_codes_render_MM_mca(),
+                     gender_list = choice_genders_render_MM_mca(),
+                     tissue_list = choice_tissues_render_MM_mca(),
+                     tissue_names_list = choice_tissue_names_render_MM_mca(),
+                     time_days_list = choice_time_days_render_MM_mca(),
+                     tumor_list = choice_tumors_render_MM_mca() )
+  })
+  
+  
+  microarray_plot <- reactive({
+    shinyjs::show(id='spinner-mca')
+    renderPlot({
+      Sys.sleep(2)
+      plot <- tryCatch(generate_plots_Microarray(input$organism,filtered_names_mca(),gene_select=input$gene.m_mca), 
+                       error = function(e) e, finally = h3(paste('Has no data for ',input$gene.m_mca,' gene !')))
+      tryCatch(print(plot), error = function(e) e, finally = h3(paste('Has no data for ',input$gene.m_mca,' gene !')))
+    })
+  })
+  
+  
+  df_filter_mca <- reactive({
+    filter(get_filter_tables_mca(),  Organism %in% input$organism_mca)
+  })
+  
+  observeEvent(input$render_plot_mca, {
+    shinyjs::show(selector = 'div.shiny-spinner-hideui')
+    output$main_plot_mca <- microarray_plot()
+  })
+  
+  filtered_controls_mca <- reactiveVal(F)
+  choice_gse_codes_render_MM_mca <- reactiveVal(choice_gse_codes_microArray)
+  choice_authors_render_MM_mca <- reactiveVal(choice_authors_microarray)
+  choice_years_render_MM_mca <- reactiveVal(choice_years_microarray)
+  choice_pmid_codes_render_MM_mca <- reactiveVal(choice_pmid_codes_microArray)
+  choice_genders_render_MM_mca <- reactiveVal(choice_genders_mca)
+  choice_tissues_render_MM_mca <- reactiveVal(choice_tissues_microarray)
+  choice_tissue_names_render_MM_mca <- reactiveVal(choice_tissue_names_microarray)
+  choice_time_days_render_MM_mca <- reactiveVal(choice_time_days_microarray)
+  choice_tumors_render_MM_mca <- reactiveVal(choice_tumors_microarray)
+  
+  
+  
+  # observeEvent(input$rna-page, { #alterar o input e remover a parte do output abaixo 
+  #   print('Link to RNA-seq page !!!')
+  #   output$main_plot_rnaseq <- renderPlot(NULL)
+  # })
+  
+  
   observeEvent(input$organism, {
     if (input$organism == 'Mus Musculus') {
       shinyjs::show("gene.m") 
@@ -458,8 +601,6 @@ shinyServer(function(input, output,session) {
       )}
   })
   
-  
-  
   # observeEvent(input$alert_filter,{
   #   
   #   loseSweetAlert(session = shiny::getDefaultReactiveDomain())
@@ -494,4 +635,3 @@ shinyServer(function(input, output,session) {
   
   
 })
-

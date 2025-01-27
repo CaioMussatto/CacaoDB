@@ -7,18 +7,17 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/css/bootstrap.min.css">
 
   <style>
-
-
     /* Container principal */
     .home-fluid {
       display: flex;
       justify-content: space-between; /* Modelos nos cantos */
       align-items: center;
       width: 100%;
-      height: 100%;
       padding: 0 20px; /* Espaçamento lateral */
+      margin-top: var(--cacao-logo-height); /* Ajusta ao início do logo */
+      margin-bottom: var(--cacao-logo-height); /* Ajusta ao término do logo */
+      height: calc(60vh - 2 * var(--cacao-logo-height)); /* Calcula a altura dinâmica */
     }
-
 
     /* Centralização e estilo das bolinhas */
     .center-icons {
@@ -29,13 +28,13 @@
       flex: 1; /* Ocupa o espaço central */
     }
 
-   .home-button {
-  height: 300px; /* Tamanho das bolinhas */
-  width: 300px;
-  cursor: pointer;
-  border: none; /* Remove borda */
-  background-color: rgba(0, 0, 0, 0); /* Fundo transparente */
-}
+    .home-button {
+      height: 300px; /* Tamanho das bolinhas */
+      width: 300px;
+      cursor: pointer;
+      border: none; /* Remove borda */
+      background-color: rgba(0, 0, 0, 0); /* Fundo transparente */
+    }
 
     /* Gradiente e cores adicionais */
     .bg-gradient-violet {
@@ -52,37 +51,35 @@
       right: 0;
       bottom: 0;
     }
-
- 
-    }
   </style>
 </head>
 <body>
 <div class="home-fluid">
   <!-- Human Section -->
   <div class="col-md-3 text-center human-section">
-    <img src="svg/ONLY-MOUSE.svg" alt="Human">
+    <img src="svg/ONLY-MOUSE.svg" alt="Human" class="img-fluid">
   </div>
 
   <!-- Center Section with clickable icons -->
   <div class="center-icons">
-    <img src="svg/Microarray.svg" class="element-button" alt="Microarray" onclick="elementClicked('Microarray')">
+    {{micro_button}}
     {{rna_button}}
     {{sc_button}}
   </div>
 
   <!-- Mouse Section -->
   <div class="col-md-3 text-center mouse-section">
-    <img src="svg/ONLY-HUMAN.svg" alt="Mouse">
+    <img src="svg/ONLY-HUMAN.svg" alt="Mouse" class="img-fluid">
   </div>
 </div>
 
-
 <script>
-  // Função para simular navegação ao clicar
-  function elementClicked(page) {
-    console.log("Navegando para a aba: " + page);
-  }
+  // Variável para calcular e ajustar o layout dinamicamente
+  const cacaoPlaceholder = document.querySelector('.gradient-cacao');
+  const cacaoLogoHeight = cacaoPlaceholder ? cacaoPlaceholder.offsetHeight : 0;
+
+  // Define a altura do logo como variável CSS
+  document.documentElement.style.setProperty('--cacao-logo-height', `${cacaoLogoHeight}px`);
 </script>
 </body>
 </html>
