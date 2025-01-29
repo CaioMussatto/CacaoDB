@@ -7,36 +7,44 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/css/bootstrap.min.css">
 
   <style>
-    /* Container principal */
-    .home-fluid {
-      display: flex;
-      justify-content: space-between; /* Modelos nos cantos */
-      align-items: center;
-      width: 100%;
-      padding: 0 20px; /* Espaçamento lateral */
-      margin-top: var(--cacao-logo-height); /* Ajusta ao início do logo */
-      margin-bottom: var(--cacao-logo-height); /* Ajusta ao término do logo */
-      height: calc(60vh - 2 * var(--cacao-logo-height)); /* Calcula a altura dinâmica */
+    /* Ajuste para ocupar 100% da altura e largura da tela */
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
     }
 
-    /* Centralização e estilo das bolinhas */
+    /* Container principal centralizado */
+    .home-fluid {
+      display: flex;
+      justify-content: space-between; /* Espaçamento entre as seções */
+      align-items: center;
+      width: 100%;
+      height: 100vh; /* Altura da tela do usuário */
+      padding: 20px; /* Espaçamento interno */
+      box-sizing: border-box; /* Inclui padding na largura e altura */
+      overflow: hidden; /* Remove barras de rolagem */
+    }
+
+    /* Seção central com ícones */
     .center-icons {
       display: flex;
       justify-content: center; /* Centraliza horizontalmente */
       align-items: center; /* Centraliza verticalmente */
       gap: 60px; /* Espaçamento entre as bolinhas */
-      flex: 1; /* Ocupa o espaço central */
+      flex: 1; /* Ocupa o espaço disponível */
     }
 
+    /* Botões circulares */
     .home-button {
-      height: 300px; /* Tamanho das bolinhas */
+      height: 500px; /* Tamanho dos botões */
       width: 300px;
       cursor: pointer;
       border: none; /* Remove borda */
-      background-color: rgba(0, 0, 0, 0); /* Fundo transparente */
+      background-color: transparent; 
     }
 
-    /* Gradiente e cores adicionais */
+    /* Gradiente de fundo */
     .bg-gradient-violet {
       background: linear-gradient(90deg, rgb(64, 109, 152) 8%, rgba(93, 82, 214, 0.849) 56%, rgba(141, 59, 227, 1) 100%);
     }
@@ -45,41 +53,60 @@
       background: linear-gradient(90deg, rgba(64, 152, 84, 1) 8%, rgba(82, 151, 214, 0.9) 56%, rgba(187, 227, 59, 1) 100%);
     }
 
+    /* Rodapé fixo */
     .footer {
-      position: absolute;
+      position: fixed;
       left: 0;
       right: 0;
       bottom: 0;
+      text-align: center;
+      padding: 10px;
+      background-color: #f8f9fa;
+      box-shadow: 0px -1px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Responsividade */
+    @media (max-width: 768px) {
+      .home-button {
+        height: 150px;
+        width: 150px;
+      }
+
+      .center-icons {
+        gap: 30px;
+      }
     }
   </style>
 </head>
 <body>
-<div class="home-fluid">
-  <!-- Human Section -->
-  <div class="col-md-3 text-center human-section">
-    <img src="svg/ONLY-MOUSE.svg" alt="Human" class="img-fluid">
+  <div class="home-fluid">
+    <!-- Human Section -->
+    <div class="col-md-3 text-center human-section">
+      <img src="svg/ONLY-MOUSE.svg" alt="Human" class="img-fluid">
+    </div>
+
+    <!-- Center Section with clickable icons -->
+    <div class="center-icons">
+      {{micro_button}}
+      {{rna_button}}
+      {{sc_button}}
+    </div>
+
+    <!-- Mouse Section -->
+    <div class="col-md-3 text-center mouse-section">
+      <img src="svg/ONLY-HUMAN.svg" alt="Mouse" class="img-fluid">
+    </div>
   </div>
 
-  <!-- Center Section with clickable icons -->
-  <div class="center-icons">
-    {{micro_button}}
-    {{rna_button}}
-    {{sc_button}}
+  <div class="footer">
+    <p>© 2025 Human and Mouse Interface. All rights reserved.</p>
   </div>
 
-  <!-- Mouse Section -->
-  <div class="col-md-3 text-center mouse-section">
-    <img src="svg/ONLY-HUMAN.svg" alt="Mouse" class="img-fluid">
-  </div>
-</div>
-
-<script>
-  // Variável para calcular e ajustar o layout dinamicamente
-  const cacaoPlaceholder = document.querySelector('.gradient-cacao');
-  const cacaoLogoHeight = cacaoPlaceholder ? cacaoPlaceholder.offsetHeight : 0;
-
-  // Define a altura do logo como variável CSS
-  document.documentElement.style.setProperty('--cacao-logo-height', `${cacaoLogoHeight}px`);
-</script>
+  <script>
+    // Função para simular navegação ao clicar
+    function elementClicked(page) {
+      console.log("Navegando para a aba: " + page);
+    }
+  </script>
 </body>
 </html>

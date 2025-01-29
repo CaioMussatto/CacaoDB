@@ -1,2 +1,3 @@
 *.rds
 *.svg
+.Rproj.user

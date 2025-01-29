@@ -27,7 +27,6 @@ library(shinycssloaders)
 
 organism_list <- c('None','Mus Musculus','Homo Sapiens')
 #source(paste(getwd(),'/Mysql_datas.R',sep=''))
-source(paste(getwd(),'/Page1.R',sep=''))
 gene_anno <- readRDS('gene_list.rds')
 
 source(paste(getwd(),'/Microarray_codes.R',sep=''))
