@@ -9,13 +9,13 @@ library(ggplot2)
 library(cowplot)
 library(gridExtra)
 library(patchwork)
-library(RMariaDB)
 library(patchwork)
 library(shinycssloaders)
 library(shinydashboard)
 
 source(paste(getwd(),'/run_analysis_ui.R',sep=''))
 source(paste(getwd(),'/SC_seq_codes.R',sep=''))
+source(paste(getwd(),'/global.R',sep=''))
 
 jsSetImg <- "shinyjs.setImg = function(params){document.getElementById('main_plot_SCrnaseq').setAttribute('src', params);}"
 # jsStopLoader <- "shiny.stopLoader = function(){document.getElementById('loader').add('hidden');alert('stopping ?');}"
