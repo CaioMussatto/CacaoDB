@@ -1,0 +1,343 @@
+#para incluir diretório de trabalho
+
+setwd("~/mateus.diniz@unesp.br - Google Drive/Drives compartilhados/Mateus - IC")
+
+library(Seurat)
+library(Matrix)
+devtools::install_github('satijalab/seurat-data')
+library(SeuratData)
+library(patchwork)
+library(dplyr)
+
+counts_mtx <- readMM("Exp_data_UMIcounts.mtx")
+genes <- read.table("Genes.txt", col.names = FALSE)
+gene_name <- genes[["FALSE."]]
+cells <- read.table("Cells.csv", sep = ",", header = TRUE)
+cell_id <- cells[["cell_name"]]
+
+#Assign gene names as rows in the counts matrix
+rownames(counts_mtx) <- gene_name
+#Assign cell id as columns in the counts matrix
+colnames(counts_mtx) <- cell_id
+
+#Create Seurat object
+laughney <- CreateSeuratObject(counts = counts_mtx)
+
+
+
+#Create a list with samples and insert into orig.ident in the seurat object
+sample <- cells[["sample"]]
+laughney$orig.ident <- sample
+
+#Create a list with cell types and insert into a column in the seurat object
+cell_type <- cells[["cell_type"]]
+laughney$cell_type <- cell_type
+
+#Create a list with malignant cells and insert into a column in the seurat object
+malignant <- cells[["malignant"]]
+laughney$malignant <- malignant
+
+
+
+#Exclude the sample (treated) - "RU679"
+Idents(laughney) <- laughney$orig.ident
+laughney <- subset(laughney, idents = c("RU653", "RU661", "RU675Tum", "RU676", "RU680",
+                                        "RU682Tum", "RU684Tum", "RU675Norm", "RU682Norm", "RU684Norm"))
+
+
+laughney <- RenameIdents(laughney, 
+                         "RU653" = "Tumor",
+                         "RU661" = "Tumor" , 
+                         "RU675Tum" = "Tumor",
+                         "RU676" = "Tumor",
+                         "RU680" = "Tumor",
+                         "RU682Tum" = "Tumor",
+                         "RU684Tum" = "Tumor",
+                         "RU675Norm" = "Normal",
+                         "RU682Norm" = "Normal",
+                         "RU684Norm" = "Normal")
+#amostras removidas porque sao metastases "RU666""RU255B""RU681""RU685""RU699""RU701"
+laughney$group <- Idents(laughney)
+table(laughney$group)
+saveRDS(laughney, file = "laughney.rds")
+#após feita a integracao (script Isabeli) seguir com as seguintes análises. refazendo integracao com a retirada de metastaticas
+
+# split the dataset into a list of two seurat objects (Tumor and Normal)
+laughney.list <- SplitObject(laughney, split.by = "group")
+
+# normalize and identify variable features for each dataset independently
+laughney.list <- lapply(X = laughney.list, FUN = function(x) {
+  x <- NormalizeData(x)
+  x <- FindVariableFeatures(x, selection.method = "vst", nfeatures = 2000)
+})
+
+# select features that are repeatedly variable across datasets for integration
+features <- SelectIntegrationFeatures(object.list = laughney.list)
+immune.anchors <- FindIntegrationAnchors(object.list = laughney.list, anchor.features = features)#14min
+# this command creates an 'integrated' data assay
+luad.combined <- IntegrateData(anchorset = immune.anchors)
+# specify that we will perform downstream analysis on the corrected data note that the
+# original unmodified data still resides in the 'RNA' assay
+DefaultAssay(luad.combined) <- "integrated"
+
+# Run the standard workflow for visualization and clustering
+luad.combined <- ScaleData(luad.combined, verbose = FALSE)
+luad.combined <- RunPCA(luad.combined, npcs = 30, verbose = FALSE)
+luad.combined <- RunUMAP(luad.combined, reduction = "pca", dims = 1:30)
+luad.combined <- FindNeighbors(luad.combined, reduction = "pca", dims = 1:30)
+luad.combined <- FindClusters(luad.combined, resolution = 0.5)
+
+# Visualization
+p1 <- DimPlot(luad.combined, reduction = "umap", group.by = "group")
+p2 <- DimPlot(luad.combined, reduction = "umap", label = TRUE, repel = TRUE)
+p1 + p2
+
+
+
+DimPlot(luad.combined, reduction = "umap", split.by = "group")
+
+saveRDS(luad.combined, file = "luad.integrated.rds")
+
+luad.combined<-readRDS("luad.integrated.rds")
+
+DefaultAssay(luad.combined) <- "RNA"
+DotPlot(luad.combined, features = c("CLDN18", "SFTPA1", "SFTPA2", "SFTPC"), cols = "RdBu") #ALVEOLAR CELLS
+DotPlot(luad.combined, features = c("MS4A1", "CD79A", "CD79B"), cols = "RdBu") #B CELL
+DotPlot(luad.combined, features = c("CD1C", "CD207"), cols = "RdBu") #DENDRITIC CELL
+DotPlot(luad.combined, features = c("NKG7", "GZMB", "KLRD1", "NCAM1"), cols = "RdBu") #NK CELL
+DotPlot(luad.combined, features = c("CPA3", "MS4A2", "TPSAB1"), cols = "RdBu") #MAST CELL
+DotPlot(luad.combined, features = c("CDH5", "VWF", "PECAM1", "CLDN5"), cols = "RdBu") #ENDOTHELIAL
+DotPlot(luad.combined, features = c("LUM", "DCN", "COL1A1", "COL1A2"), cols = "RdBu") #FIBROBLASTS
+DotPlot(luad.combined, features = c("SLAMF7", "CD38", "JCHAIN"), cols = "RdBu") #PLASM CELL
+DotPlot(luad.combined, features = c("KRT19", "KRT7", "EPCAM"), cols = "RdBu") #MALIGNANT
+DotPlot(luad.combined, features = c("CD3D", "CD3E", "CD2"), cols = "RdBu") #T CELL
+DotPlot(luad.combined, features = c("CD14", "AIF1", "CD68"), cols = "RdBu") #MACROPHAGE
+DotPlot(luad.combined, features = c("CAPS"), cols = "RdBu") #EPITHELIAL CELL
+
+luad.combined <- RenameIdents(luad.combined, `0` = "Alveolar Cells", `1` = "B Cell", `2` = "Dendritic Cell",
+                              `3` = "NK Cell", `4` = "Mast Cell", `5` = "Endothelial", `6` = "Fibrolasts", `7` = "Plasm Cell", `8` = "Malignant", `9` = "T Cell",
+                              `10` = "Macrophage", `11` = "Epithelial Cell")
+
+cluster2.markers <- FindConservedMarkers(luad.combined, ident.1 = 2, grouping.var = "group", verbose = FALSE)
+write.csv(cluster2.markers, file = "cluster2_markers.csv")
+
+cluster5.markers <- FindConservedMarkers(luad.combined, ident.1 = 5, grouping.var = "group", verbose = FALSE)
+write.csv(cluster5.markers, file = "cluster5_markers.csv")
+
+cluster13.markers <- FindConservedMarkers(luad.combined, ident.1 = 13, grouping.var = "group", verbose = FALSE)
+write.csv(cluster13.markers, file = "cluster13_markers.csv")
+
+cluster15.markers <- FindConservedMarkers(luad.combined, ident.1 = 15, grouping.var = "group", verbose = FALSE)
+write.csv(cluster15.markers, file = "cluster15_markers.csv")
+
+cluster16.markers <- FindConservedMarkers(luad.combined, ident.1 = 16, grouping.var = "group", verbose = FALSE)
+write.csv(cluster16.markers, file = "cluster16_markers.csv")
+
+cluster19.markers <- FindConservedMarkers(luad.combined, ident.1 = 19, grouping.var = "group", verbose = FALSE)
+write.csv(cluster19.markers, file = "cluster19_markers.csv")
+
+cluster20.markers <- FindConservedMarkers(luad.combined, ident.1 = 20, grouping.var = "group", verbose = FALSE)
+write.csv(cluster20.markers, file = "cluster20_markers.csv")
+
+cluster21.markers <- FindConservedMarkers(luad.combined, ident.1 = 21, grouping.var = "group", verbose = FALSE)
+write.csv(cluster21.markers, file = "cluster21_markers.csv")
+
+luad.combined <- RenameIdents(luad.combined, 
+                              "0" = "T cell", 
+                              "1" = "T cell", 
+                              "2" = "T cell",
+                              "3" = "B cell", 
+                              "4" = "Macrophage", 
+                              "5" = "Macrophage", 
+                              "6" = "NK cell", 
+                              "7" = "T cell", 
+                              "8" = "Dendritic cell", 
+                              "9" = "Macrophage",
+                              "10" = "Alveolar cell", 
+                              "11" = "Mast cell", 
+                              "12" = "T cell", 
+                              "13" = "Macrophage", 
+                              "14" = "Fibroblasts",
+                              "15" = "T cell",
+                              "16" = "Plasm cell",
+                              "17" = "Endothelial",
+                              "18" = "Epithelial cell",
+                              "19" = "Malignant",
+                              "20" = "Malignant",
+                              "21" = "Malignant",
+                              "22" = "Malignant")
+
+DimPlot(luad.combined, label = FALSE)
+
+
+DimPlot(luad.combined, label = TRUE)
+
+DimPlot(luad.combined, reduction = "umap", cols = c("Malignant" = "#d9f0a3","Fibroblasts" = "#F9B11F", "Endothelial" = "#f768a1","Epithelial cell" = "#0570b0",
+                                                    "Macrophage" = "#8c6bb1", "Dendritic cell" = "#ae017e", "Plasm cell" = "#993404", "Mast cell" = "#DD1F1F",
+                                                    "B cell" = "#addd8e", "T cell" = "#238443","NK cell" = "#fee391", "Alveolar cell" = "#a6bddb"))
+
+saveRDS(luad.combined, file = "luad.combined_mycellltypes.rds")
+# Gráfico de expressão de genes marcados dos tipos celulares
+#fazer analise pareada
+subset1 <- subset(luad.combined_mycelltypes, idents = c("Malignant","Alveolar cell"))
+#RU653     RU661  RU675Tum     RU676     RU680  RU682Tum  RU684Tum RU675Norm RU682Norm RU684Norm 
+#172        66       181        48       184        94       300        75        69       154 
+meta <- subset1@meta.data
+#fez a comparação dos subsets do tumor e das normais adjacentes (P)
+Idents(subset1) <- subset1$orig.ident
+RU682 <- FindMarkers(subset1, ident.1 = "RU682Tum", ident.2 = "RU682Norm")
+write.csv(RU682, file = "degs_RU682_pareada.csv")
+RU675 <- FindMarkers(subset1, ident.1 = "RU675Tum", ident.2 =  "RU675Norm")
+write.csv(RU675, file = "degs_RU675_pareada.csv")
+RU684 <- FindMarkers(subset1, ident.1 = "RU684Tum", ident.2 =  "RU684Norm")
+write.csv(RU684, file = "degs_RU684_pareada.csv")
+saveRDS(subset1, file = "subset1.rds")
+
+#comparar tumor de normal do subset por paciente RU682, 675, 684. Normais dentro das malignas e malignas dentro das normais.
+#diferença de expressão entre todas as células tumorais e normais dentro do subset do paciente, o que eu tenho são planilhas que mostram a
+#diferença na expressão gÊnica das células com tumor dentro ou fora da área tumoral das células normais dentro ou fora do subset de tumorais em cada paciente (ambos)
+#yes é com tumor, no é sem tumor, ambos é normias dentro do subset tumoral junto.
+#ambos está incluido as normais dentro do tumor, diferenças na expressão gênica devido ao tumor.
+
+#criar um subset pra cada paciente
+#tem tumor ou não tem tumor dentro do tumoral
+Idents(subset1) <- subset1$orig.ident
+
+subsetRU682 <- subset(subset1, idents = c("RU682Tum"))
+Idents(subsetRU682) <- subsetRU682$malignant
+RU682Tum_yes_no <- FindMarkers(subsetRU682, ident.1 = "yes", ident.2 = "no")
+#yes  no 
+#18  76 
+write.csv(RU682Tum_yes_no, file = "degs_RU682_yes_no.csv")
+
+subsetRU675 <- subset(subset1, idents = c("RU675Tum"))
+Idents(subsetRU675) <- subsetRU675$malignant
+#yes  no 
+#127  54 
+RU675Tum_yes_no <- FindMarkers(subsetRU675, ident.1 = "yes", ident.2 = "no")
+write.csv(RU675Tum_yes_no, file = "degs_RU675_yes_no.csv")
+
+subsetRU684 <- subset(subset1, idents = c("RU684Tum"))
+Idents(subsetRU684) <- subsetRU684$malignant
+#yes  no 
+#180 120 
+RU684Tum_yes_no <- FindMarkers(subsetRU684, ident.1 = "yes", ident.2 = "no")
+write.csv(RU684Tum_yes_no, file = "degs_RU684_yes_no.csv")
+
+#ADICIONAR NORMAIS ADJACENTES COMBINADOS (2)
+#ambos = tum + norm
+#tudo, separou por tumoral e não tumoral, adicionaou normais adjaentes
+Idents(subset1) <- subset1$orig.ident
+subsetRU682_ambos <- subset(subset1, idents = c("RU682Tum", "RU682Norm"))
+Idents(subsetRU682_ambos) <- subsetRU682_ambos$malignant
+#yes  no 
+#18 145 
+RU682_ambos_yes_no <- FindMarkers(subsetRU682_ambos, ident.1 = "yes", ident.2 = "no")
+write.csv(RU682_ambos_yes_no, file = "degs_RU682_ambos_yes_no.csv")
+
+subsetRU675_ambos <- subset(subset1, idents = c("RU675Tum", "RU675Norm"))
+Idents(subsetRU675_ambos) <- subsetRU675_ambos$malignant
+#yes  no 
+#27 129 
+RU675_ambos_yes_no <- FindMarkers(subsetRU675_ambos, ident.1 = "yes", ident.2 = "no")
+write.csv(RU675_ambos_yes_no, file = "degs_RU675_ambos_yes_no.csv")
+
+subsetRU684_ambos <- subset(subset1, idents = c("RU684Tum", "RU684Norm"))
+Idents(subsetRU684_ambos) <- subsetRU684_ambos$malignant
+#yes  no 
+#180 274 
+RU684_ambos_yes_no <- FindMarkers(subsetRU684_ambos, ident.1 = "yes", ident.2 = "no")
+write.csv(RU684_ambos_yes_no, file = "degs_RU684_ambos_yes_no.csv")
+
+library(dplyr)
+library(patchwork)
+
+RU684_ambos_yes_no%>%
+  group_by(avg_log2FC) %>%
+  top_n(n = 10, wt = avg_log2FC) -> top10
+DoHeatmap(subsetRU684_ambos, features = NULL) + NoLegend()
+
+meta <- subsetRU684_ambos@meta.data
+
+RU675_ambos_yes_no%>%
+  group_by(avg_log2FC) %>%
+  top_n(n = 10, wt = avg_log2FC) -> top10
+DoHeatmap(subsetRU684_ambos, features = NULL) + NoLegend()
+
+
+RU682_ambos_yes_no%>%
+  group_by(avg_log2FC) %>%
+  top_n(n = 10, wt = avg_log2FC) -> top10
+DoHeatmap(subsetRU684_ambos, features = NULL) + NoLegend()
+
+RU684Tum_yes_no%>%
+  group_by(avg_log2FC) %>%
+  top_n(n = 10, wt = avg_log2FC) -> top10
+DoHeatmap(subsetRU684_ambos, features = NULL) + NoLegend()
+
+RU675Tum_yes_no%>%
+  group_by(avg_log2FC) %>%
+  top_n(n = 10, wt = avg_log2FC) -> top10
+DoHeatmap(subsetRU684_ambos, features = NULL) + NoLegend()
+
+RU684Tum_yes_no%>%
+  group_by(avg_log2FC) %>%
+  top_n(n = 10, wt = avg_log2FC) -> top10
+DoHeatmap(subsetRU684_ambos, features = NULL) + NoLegend()
+#comecando com os dados integrados
+
+setwd("~/mateus.diniz@unesp.br - Google Drive/Drives compartilhados/Mateus - IC")
+library(dplyr)
+library(Matrix)
+library(Seurat)
+library(SeuratData)
+library(patchwork)
+
+luad_combined_4_NAMED <- readRDS("~/mateus.diniz@unesp.br - Google Drive/Drives compartilhados/Mateus - IC/Data/luad_combined_4_NAMED.rds")
+
+subset2<- readRDS("~/mateus.diniz@unesp.br - Google Drive/Drives compartilhados/Mateus - IC/Data/subset2.rds")
+
+meta<-luad_combined_4_NAMED@meta.data
+
+
+subset2 <- subset(luad_combined_4_NAMED, idents = c("Malignant","Alveolar cell"))
+Idents(subset2) <- subset2$orig.ident
+meta2<-subset2@meta.data
+saveRDS(subset2, "subset2.rds")
+subsetpaciente4 <- subset(subset2, idents = c("4"))
+
+View(subsetpaciente4@meta.data)
+#agora eu tenho que mudar para a identificacao do 3ca de cnas
+
+Idents(subsetpaciente4) <- subsetpaciente4$cell_type
+#38alveolar 386 maligna
+DEGTumorpaciente4<-FindMarkers(subsetpaciente4, ident.1 = "Malignant", ident.2 = "Alveolar", verbose = FALSE )
+write.csv(DEGTumorpaciente4, file = "degs_a4_yes_no.csv")
+View(DEGTumorpaciente4)
+degs_significativospaciente4<-DEGTumorpaciente4 %>% filter(DEGTumorpaciente4$p_val_adj<0.05)
+write.csv(degs_significativospaciente4, file = "DEGSSIGNIFICATIVOSPACIENTEA4.csv")
+#criar uma funcao fazendo isso 
+
+subset2<- readRDS("~/mateus.diniz@unesp.br - Google Drive/Drives compartilhados/Mateus - IC/Data/subset2.rds")
+
+DEGSindividuais<-function(idents){
+  subsetpaciente <- subset(subset2, idents = c(idents))
+  print(subsetpaciente@meta.data)
+  Idents(subsetpaciente) <- subsetpaciente$cell_types
+  DEGTumorpaciente<-FindMarkers(subsetpaciente, ident.1 = "Malignant", ident.2 = "Alveolar cell", verbose = FALSE )
+  write.csv(DEGTumorpaciente, file = paste("DEGS_PACIENTE_", idents, ".csv" , sep = ""))
+  print(DEGTumorpaciente)
+  degs_significativospaciente<-DEGTumorpaciente %>% filter(DEGTumorpaciente$p_val_adj<0.05)
+  write.csv(degs_significativospaciente, file = paste("DEGS_SIGNIFICATIVOS_PACIENTE_", idents,".csv" , sep = ""))
+  
+  return(degs_significativospaciente)
+  
+}
+#antes estava cell_type mudei para ver o que vira e tamb[em era s[o alveolar mas parece que estamos na mesmo]]
+pacienteSSN19<-DEGSindividuais("SSN19")
+subsetpP00<-subset(subset2, orig.ident = c("P0018"))
+
+
+install.packages('devtools')
+devtools::install_github('immunogenomics/presto')
+
