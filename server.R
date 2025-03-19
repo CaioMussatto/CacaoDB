@@ -16,6 +16,8 @@ source(paste(getwd(),'/SC_seq_codes.R',sep=''))
 
 
 shinyServer(function(input, output,session) {
+  
+  #RNASEQ Filtering ----
   filtered_controls_rnaseq <- reactiveVal(F)
   choice_gse_codes_render_MM_rnaseq <- reactiveVal(choice_gse_codes)
   choice_authors_render_MM_rnaseq <- reactiveVal(choice_authors)
@@ -27,54 +29,10 @@ shinyServer(function(input, output,session) {
   choice_time_days_render_MM_rnaseq <- reactiveVal(choice_time_days)
   choice_tumors_render_MM_rnaseq <- reactiveVal(choice_tumors)
   
-  
   df_filter <- reactive({
     filter(get_filter_tables(),  Organism %in% input$organism)
   })
   
-  # RNA seq plot render 
-  rna_seq_plot <- reactive({
-    shinyjs::show(id='spinner')
-    renderPlot({
-      Sys.sleep(2)
-      plot <- tryCatch(generate_plots_RNAseq(input$organism,filtered_names_rnaseq(),gene_select=input$gene.m), 
-                       error = function(e) e, finally = h3(paste('Has no data for ',input$gene.m,' gene !')))
-      tryCatch(print(plot), error = function(e) e, finally = h3(paste('Has no data for ',input$gene.m,' gene !')))
-    })
-  })
-  
-  # ScRNA seq plot render 
-  Scrna_seq_plot <- reactive({
-    shinyjs::show(id = 'spinnersc')
-    
-    renderPlot({
-      Sys.sleep(1)
-      gene_input <- if (input$organism_sc == 'Mus Musculus') {
-        input$gene.m.sc
-      } else {
-        input$gene.h.sc
-      }
-      gene_input<- str_replace_all(gene_input,'-','.')
-      cat("Debug: Using gene input:", gene_input, "\n")
-      plot <- tryCatch(
-        generate_plots_ScRNAseq(
-          tissue = input$tissue_sc,
-          organism = input$organism_sc,
-          gene_select = gene_input
-        ),
-        error = function(e) {
-          cat("Error:", conditionMessage(e), "\n")
-          return(h3(paste('Has no data for', gene_input, 'gene!')))
-        },
-        finally = {
-          h3(paste('Has no data for', gene_input, 'gene!'))
-        }
-      )
-      
-      # Caso haja um erro, ele será tratado acima.
-      plot
-    })
-  })
   
   filtered_names_rnaseq <- reactive({
     filter_table(df_tables_info = df_filter(), 
@@ -88,170 +46,56 @@ shinyServer(function(input, output,session) {
                  time_days_list = choice_time_days_render_MM_rnaseq(),
                  tumor_list = choice_tumors_render_MM_rnaseq() )
   })
-  # render plot for RNAseq
-  observeEvent(input$render_plot,{
-    shinyjs::show(selector = 'div.shiny-spinner-hideui')
-    output$main_plot_rnaseq <- rna_seq_plot()
-    
+  
+  observeEvent(input$organism, {
+    if (input$organism == 'Mus Musculus') {
+      shinyjs::show("gene.m") 
+      shinyjs::hide('gene.h') # Reseta o valor do gene
+    } else if (input$organism == 'Homo Sapiens') {
+      shinyjs::hide("gene.m") 
+      shinyjs::show('gene.h') # Reseta o valor do gene
+    } else {
+      shinyjs::hide("gene.m") 
+      shinyjs::hide('gene.h')
+    }
+  }, ignoreInit = TRUE, once = FALSE, ignoreNULL = FALSE)
+  
+  observeEvent(input$ipt_TUMOR_slider,{
+    filter_tumor(input,output,session)
   })
-  
-  
-  observeEvent(input$render_plot_SC,{
-    shinyjs::show(selector = 'div.shiny-spinner-hideui')
-    output$main_plot_SCrnaseq <- Scrna_seq_plot()
+  observeEvent(input$ipt_YEAR_slider,{
+    filter_year(input,output,session)
   })
-  
-  output$download_plot <- downloadHandler(
-    filename = function() {
-      gene_input <- if (input$organism_sc == 'Mus Musculus') {
-        input$gene.m.sc
-      } else {
-        input$gene.h.sc
-      }
-      gene_input <- str_to_title(gene_input)
-      
-      tissue_name <- tryCatch({
-        input$tissue_sc
-      }, error = function(e) {
-        cat("Error in tissue name extraction:", conditionMessage(e), "\n")
-        return("UnknownTissue")
-      })
-      
-      paste0(gene_input, "_", tissue_name, ".png")
-    },
-    content = function(file) {
-      withProgress(
-        message = 'Generating plot...',
-        detail = 'Please wait while the file is being prepared.',
-        value = 0, {
-          # Incrementa o progresso antes da geração do gráfico
-          incProgress(0.3)
-          
-          gene_input <- if (input$organism_sc == 'Mus Musculus') {
-            input$gene.m.sc
-          } else {
-            input$gene.h.sc
-          }
-          gene_input <- str_replace_all(gene_input, '-', '.')
-          
-          # Gera o gráfico
-          plot <- plot_gene_analysis(
-            tissue_list[[input$tissue_sc]],
-            gene_name = gene_input,
-            cell.colors = cell.colors
-          )
-          
-          # Incrementa o progresso durante o salvamento do arquivo
-          incProgress(0.6)
-          
-          # Salva o gráfico
-          ggsave(file, plot, dpi = 500, width = 15, height = 10)
-          
-          # Incrementa para finalizar
-          incProgress(1)
-        }
-      )
-    }
-  )
-  
-  output$download_plot_rnaseq <- downloadHandler(
-    filename = function() {
-      gene_input <- str_to_title(input$gene.m)
-      organims <- str_to_title(input$organism)
-      paste0(gene_input, "_", organims, ".png")
-    },
-    content = function(file) {
-      withProgress(
-        message = 'Generating plot...',
-        detail = 'Please wait while the file is being prepared.',
-        value = 0, {
-          # Increment progress before generating the plot
-          incProgress(0.3)
-          
-          gene_input <- input$gene.m
-          
-          # Gera o gráfico utilizando generate_plots_RNAseq
-          plot <- generate_plots_RNAseq(input$organism, filtered_names_rnaseq(), gene_select = gene_input)
-          
-          # Increment progress during saving the file
-          incProgress(0.6)
-          
-          # Salva o gráfico
-          ggsave(file, plot, dpi = 500, width = 15, height = 10)
-          
-          # Increment para finalizar
-          incProgress(1)
-        }
-      )
-    }
-  )
-  
-  output$download_plot_mca <- downloadHandler(
-    filename = function() {
-      gene_input <- str_to_title(input$gene.m_mca)
-      organims <- str_to_title(input$organism_mca)
-      paste0(gene_input, "_", organims, ".png")
-    },
-    content = function(file) {
-      withProgress(
-        message = 'Generating plot...',
-        detail = 'Please wait while the file is being prepared.',
-        value = 0, {
-          # Increment progress before generating the plot
-          incProgress(0.3)
-          
-          gene_input <- input$gene.m_mca
-          
-          # Gera o gráfico utilizando generate_plots_RNAseq
-          plot <- generate_plots_Microarray(input$organism_mca, filtered_names_mca(), gene_select = gene_input)
-          # Increment progress during saving the file
-          incProgress(0.6)
-          
-          # Salva o gráfico
-          ggsave(file, plot, dpi = 500, width = 15, height = 10)
-          
-          # Increment para finalizar
-          incProgress(1)
-        }
-      )
-    }
-  )
-  
+  observeEvent(input$ipt_TISSUE_NAME_slider,{
+    filter_tissue_name(input,output,session)
+  })
+  observeEvent(input$ipt_PMID_slider,{
+    filter_PMID(input,output,session)
+  })
+  observeEvent(input$ipt_TIME_slider,{
+    filter_time_days(input,output,session)
+  })
+  observeEvent(input$ipt_GENDER_slider,{
+    filter_gender(input,output,session)
+  })
+  observeEvent(input$ipt_GSE_slider,{
+    filter_GSE(input,output,session)
+  })
+  observeEvent(input$ipt_AUTHORS_slider,{
+    filter_authors(input,output,session)
+  })
+  observeEvent(input$ipt_TISSUE_slider,{
+    filter_tissue(input,output,session)
+  })
   
   
   set_filtered_controls_rnaseq <- function(value) {
     filtered_controls_rnaseq(value)
   }
   
-  get_filtered_controls_rnaseq <- reactive({filtered_controls()})
+
   
-  # observeEvent(input$filter_btn,{
-  #   showModal( session = getDefaultReactiveDomain(),
-  #              modalDialog(
-  #     title = 'Filter',
-  #   render_filter_ui(),
-  #   'Text modal ',
-  #      footer = tagList(
-  #        modalButton("Cancel"),
-  #        actionButton("ok_filter", "OK")
-  #      ),
-  #   easyClose = TRUE,
-  #   fade = TRUE
-  #    )%>%
-  #     tagAppendAttributes(class='w-75 h-75 bg-light'),
-  #   )
-  #   showModal(
-  #     session = getDefaultReactiveDomain(),
-  #     modalDialog(
-  #     title = "Somewhat important message",
-  #     "This is a somewhat import  ant message.",
-  #     easyClose = TRUE,
-  #     footer = NULL
-  #   )%>%
-  #     tagAppendAttributes(class='w-75 h-75 bg-light')
-  #   )
-  # })
-  # 
+  
   observeEvent(input$ok_filter,{
     
     set_filtered_controls_rnaseq(TRUE )
@@ -304,30 +148,84 @@ shinyServer(function(input, output,session) {
     
   })
   
-  observeEvent(input$homeLink,{
-    print('link to Home page !!!')
+  #RNA seq plot render----
+  rna_seq_plot <- reactive({
+    shinyjs::show(id='spinner')
+    renderPlot({
+      Sys.sleep(1)
+      gene_input <- if (input$organism == 'Mus Musculus') {
+        input$gene.m
+      } else if (input$organism == 'Homo Sapiens') {
+        input$gene.h
+      }
+      plot <- tryCatch(generate_plots_RNAseq(input$organism,filtered_names_rnaseq(),gene_select=gene_input), 
+                       error = function(e) e, finally = h3(paste('Has no data for ',gene_input,' gene !')))
+      tryCatch(print(plot), error = function(e) e, finally = h3(paste('Has no data for ',gene_input,' gene !')))
+    })
   })
-  
-  observeEvent(input$microArrayLink,{
-    print('link to microArray page !!!')
-  })
-  
-  observeEvent(input$rnaSeqLink,{
-    print('link to RNA-Seq page !!!')
-  })
-  
-  observeEvent(input$scRnaSeqLink, {
-    print('Link to SCRNA-Seq page !!!')
+
+  observeEvent(input$render_plot,{
+    shinyjs::show(selector = 'div.shiny-spinner-hideui')
+    output$main_plot_rnaseq <- rna_seq_plot()
     
-    # Resetar os valores dos inputs de gene
-    updatePickerInput(session, "gene.m.sc", selected = NULL)
-    updatePickerInput(session, "gene.h.sc", selected = NULL)
-    
-    # Resetar o gráfico (limpando o output relacionado)
-    output$main_plot_SCrnaseq <- renderPlot(NULL)
   })
   
+  #RNA seq plot download----
+  output$download_plot_rnaseq <- downloadHandler(
+    filename = function() {
+      gene_input <- str_to_title(input$gene.m)
+      organims <- str_to_title(input$organism)
+      paste0(gene_input, "_", organims, ".png")
+    },
+    content = function(file) {
+      withProgress(
+        message = 'Generating plot...',
+        detail = 'Please wait while the file is being prepared.',
+        value = 0, {
+          # Increment progress before generating the plot
+          incProgress(0.3)
+          
+          gene_input <- input$gene.m
+          
+          # Gera o gráfico utilizando generate_plots_RNAseq
+          plot <- generate_plots_RNAseq(input$organism, filtered_names_rnaseq(), gene_select = gene_input)
+          
+          # Increment progress during saving the file
+          incProgress(0.6)
+          
+          # Salva o gráfico
+          ggsave(file, plot, dpi = 500, width = 15, height = 10)
+          
+          # Increment para finalizar
+          incProgress(1)
+        }
+      )
+    }
+  )
+  #------------#
   
+  #ScRNA-seq----
+  
+  observeEvent(c(input$tissue_sc, input$organism_sc),  {
+    if (input$organism_sc == 'Mus Musculus') {
+      tissue_data <- tissue_list[[input$tissue_sc]]
+      shinyjs::show(id = "gene.m.sc") # Mostra o pickerInput caso esteja oculto
+      updatePickerInput(
+        session = session,
+        inputId = "gene.m.sc",
+        choices = colnames(tissue_data), # Atualiza com as colunas disponíveis no tissue_data
+        selected = NULL # Reseta a seleção atual
+      )}
+    else if (input$organism_sc == 'Human'){
+      tissue_data <- tissue_list[[input$tissue_sc]]
+      shinyjs::show(id = "gene.h.sc") # Mostra o pickerInput caso esteja oculto
+      updatePickerInput(
+        session = session,
+        inputId = "gene.h.sc",
+        choices = colnames(tissue_data), # Atualiza com as colunas disponíveis no tissue_data
+        selected = NULL # Reseta a seleção atual
+      )}
+  })
   
   observeEvent(input$sc_breast_Human,
                {
@@ -434,27 +332,99 @@ shinyServer(function(input, output,session) {
     output$tissue_selected <- renderText("Tissue: EMT6")
   })
   
-  observeEvent(input$sc_page, {
-    print('Link to SCRNA-Seq page !!!')
+  
+  # ScRNA seq plot render----
+  Scrna_seq_plot <- reactive({
+    shinyjs::show(id = 'spinnersc')
     
-    # Resetar os valores dos inputs de gene
-    updatePickerInput(session, "gene.m.sc", selected = NULL)
-    updatePickerInput(session, "gene.h.sc", selected = NULL)
-    
-    # Resetar o gráfico (limpando o output relacionado)
-    output$main_plot_SCrnaseq <- renderPlot(NULL)
+    renderPlot({
+      Sys.sleep(1)
+      gene_input <- if (input$organism_sc == 'Mus Musculus') {
+        input$gene.m.sc
+      } else {
+        input$gene.h.sc
+      }
+      gene_input<- str_replace_all(gene_input,'-','.')
+      cat("Debug: Using gene input:", gene_input, "\n")
+      plot <- tryCatch(
+        generate_plots_ScRNAseq(
+          tissue = input$tissue_sc,
+          organism = input$organism_sc,
+          gene_select = gene_input
+        ),
+        error = function(e) {
+          cat("Error:", conditionMessage(e), "\n")
+          return(h3(paste('Has no data for', gene_input, 'gene!')))
+        },
+        finally = {
+          h3(paste('Has no data for', gene_input, 'gene!'))
+        }
+      )
+      plot
+    })
+  })
+
+  observeEvent(input$render_plot_SC,{
+    shinyjs::show(selector = 'div.shiny-spinner-hideui')
+    output$main_plot_SCrnaseq <- Scrna_seq_plot()
   })
   
-  observeEvent(input$rna_page, {
-    print('Link to RNA-seq page !!!')
-    output$main_plot_rnaseq <- renderPlot(NULL)
-  })
+  #ScRNA-seq plot download----
   
-  observeEvent(input$micro_page, {
-    print('Link to Microarray  page !!!')
-  })
+  output$download_plot <- downloadHandler(
+    filename = function() {
+      gene_input <- if (input$organism_sc == 'Mus Musculus') {
+        input$gene.m.sc
+      } else {
+        input$gene.h.sc
+      }
+      gene_input <- str_to_title(gene_input)
+      
+      tissue_name <- tryCatch({
+        input$tissue_sc
+      }, error = function(e) {
+        cat("Error in tissue name extraction:", conditionMessage(e), "\n")
+        return("UnknownTissue")
+      })
+      
+      paste0(gene_input, "_", tissue_name, ".png")
+    },
+    content = function(file) {
+      withProgress(
+        message = 'Generating plot...',
+        detail = 'Please wait while the file is being prepared.',
+        value = 0, {
+          # Incrementa o progresso antes da geração do gráfico
+          incProgress(0.3)
+          
+          gene_input <- if (input$organism_sc == 'Mus Musculus') {
+            input$gene.m.sc
+          } else {
+            input$gene.h.sc
+          }
+          gene_input <- str_replace_all(gene_input, '-', '.')
+          
+          # Gera o gráfico
+          plot <- plot_gene_analysis(
+            tissue_list[[input$tissue_sc]],
+            gene_name = gene_input,
+            cell.colors = cell.colors
+          )
+          
+          # Incrementa o progresso durante o salvamento do arquivo
+          incProgress(0.6)
+          
+          # Salva o gráfico
+          ggsave(file, plot, dpi = 500, width = 15, height = 10)
+          
+          # Incrementa para finalizar
+          incProgress(1)
+        }
+      )
+    }
+  )
   
-  
+  #Microarray----
   
   observeEvent(input$organism_mca,
                {
@@ -468,10 +438,6 @@ shinyServer(function(input, output,session) {
                    shinyjs::hide("gene.m_mca") 
                    shinyjs::hide('gene.h_mca')
                  } },ignoreInit = T, once = F,ignoreNULL=FALSE )
-  
-  
-  
-  
   
   
   observeEvent(input$ipt_YEAR_slider_mca,{
@@ -508,11 +474,11 @@ shinyServer(function(input, output,session) {
     filtered_controls_mca(value)
   }
   
-  get_filtered_controls_mca <- reactive({filtered_controls()})
+  
   
   
   filtered_names_mca <- reactive({
-    filter_table_mca(df_tables_info = df_filter_mca(), 
+    filter_table_mca(df_tables_info_mca = df_filter_mca(), 
                      author_list = choice_authors_render_MM_mca(),
                      year_list = choice_years_render_MM_mca(),
                      gse_code_list = choice_gse_codes_render_MM_mca(),
@@ -525,24 +491,8 @@ shinyServer(function(input, output,session) {
   })
   
   
-  microarray_plot <- reactive({
-    shinyjs::show(id='spinner-mca')
-    renderPlot({
-      Sys.sleep(2)
-      plot <- tryCatch(generate_plots_Microarray(input$organism,filtered_names_mca(),gene_select=input$gene.m_mca), 
-                       error = function(e) e, finally = h3(paste('Has no data for ',input$gene.m_mca,' gene !')))
-      tryCatch(print(plot), error = function(e) e, finally = h3(paste('Has no data for ',input$gene.m_mca,' gene !')))
-    })
-  })
-  
-  
   df_filter_mca <- reactive({
     filter(get_filter_tables_mca(),  Organism %in% input$organism_mca)
-  })
-  
-  observeEvent(input$render_plot_mca, {
-    shinyjs::show(selector = 'div.shiny-spinner-hideui')
-    output$main_plot_mca <- microarray_plot()
   })
   
   filtered_controls_mca <- reactiveVal(F)
@@ -557,81 +507,157 @@ shinyServer(function(input, output,session) {
   choice_tumors_render_MM_mca <- reactiveVal(choice_tumors_microarray)
   
   
-  
-  # observeEvent(input$rna-page, { #alterar o input e remover a parte do output abaixo 
-  #   print('Link to RNA-seq page !!!')
-  #   output$main_plot_rnaseq <- renderPlot(NULL)
-  # })
-  
-  
-  observeEvent(input$organism, {
-    if (input$organism == 'Mus Musculus') {
-      shinyjs::show("gene.m") 
-      shinyjs::hide('gene.h')
-      updateTextInput(session, "gene.m", value = "") # Reseta o valor do gene
-    } else if (input$organism == 'Homo Sapiens') {
-      shinyjs::hide("gene.m") 
-      shinyjs::show('gene.h')
-      updateTextInput(session, "gene.h", value = "") # Reseta o valor do gene
-    } else {
-      shinyjs::hide("gene.m") 
-      shinyjs::hide('gene.h')
+  observeEvent(input$ok_filter_mca,{
+    
+    set_filtered_controls_mca(TRUE )
+    arg <-c()
+    if(length(input$ipt_AUTHORS_mca)>0){
+      choice_authors_render_MM_mca(input$ipt_AUTHORS_mca)
+    }else{
+      choice_authors_render_MM_mca(c())
     }
-  }, ignoreInit = TRUE, once = FALSE, ignoreNULL = FALSE)
-  
-  
-  observeEvent(c(input$tissue_sc, input$organism_sc),  {
-    if (input$organism_sc == 'Mus Musculus') {
-      tissue_data <- tissue_list[[input$tissue_sc]]
-      shinyjs::show(id = "gene.m.sc") # Mostra o pickerInput caso esteja oculto
-      updatePickerInput(
-        session = session,
-        inputId = "gene.m.sc",
-        choices = colnames(tissue_data), # Atualiza com as colunas disponíveis no tissue_data
-        selected = NULL # Reseta a seleção atual
-      )}
-    else if (input$organism_sc == 'Human'){
-      tissue_data <- tissue_list[[input$tissue_sc]]
-      shinyjs::show(id = "gene.h.sc") # Mostra o pickerInput caso esteja oculto
-      updatePickerInput(
-        session = session,
-        inputId = "gene.h.sc",
-        choices = colnames(tissue_data), # Atualiza com as colunas disponíveis no tissue_data
-        selected = NULL # Reseta a seleção atual
-      )}
+    if(length(input$ipt_YEAR_mca)>0){
+      choice_years_render_MM_mca(input$ipt_YEAR_mca)
+    }else{
+      choice_years_render_MM_mca(c())
+    }
+    if(length(input$ipt_GSE_mca)>0){
+      choice_gse_codes_render_MM_mca(input$ipt_GSE_mca)
+    }else{
+      choice_gse_codes_render_MM_mca(c())
+    }
+    if(length(input$ipt_PMID_mca)>0){
+      choice_pmid_codes_render_MM_mca(input$ipt_PMID_mca)
+    }else{
+      choice_pmid_codes_render_MM_mca(c())
+    }
+    if(length(input$ipt_GENDER_mca)>0){
+      choice_genders_render_MM_mca(input$ipt_GENDER_mca)
+    }else{
+      choice_genders_render_MM_mca(c())
+    }
+    if(length(input$ipt_TISSUE_mca)>0){
+      choice_tissues_render_MM_mca(input$ipt_TISSUE_mca)
+    }else{
+      choice_tissues_render_MM_mca(c())
+    }
+    if(length(input$ipt_TISSUE_NAME_mca)>0){
+      choice_tissue_names_render_MM_mca(input$ipt_TISSUE_NAME_mca)
+    }else{
+      choice_tissue_names_render_MM_mca(c())
+    }
+    if(length(input$ipt_TIME_mca)>0){
+      choice_time_days_render_MM_mca(input$ipt_TIME_mca)
+    }else{
+      choice_time_days_render_MM_mca(c())
+    }
+    if(length(input$ipt_TUMOR_mca)>0){
+      choice_tumors_render_MM_mca(input$ipt_TUMOR_mca)
+    }else{
+      choice_tumors_render_MM_mca(c())
+    }
+    
   })
   
-  # observeEvent(input$alert_filter,{
-  #   
-  #   loseSweetAlert(session = shiny::getDefaultReactiveDomain())
-  # })
-  observeEvent(input$ipt_TUMOR_slider,{
-    filter_tumor(input,output,session)
-  })
-  observeEvent(input$ipt_YEAR_slider,{
-    filter_year(input,output,session)
-  })
-  observeEvent(input$ipt_TISSUE_NAME_slider,{
-    filter_tissue_name(input,output,session)
-  })
-  observeEvent(input$ipt_PMID_slider,{
-    filter_PMID(input,output,session)
-  })
-  observeEvent(input$ipt_TIME_slider,{
-    filter_time_days(input,output,session)
-  })
-  observeEvent(input$ipt_GENDER_slider,{
-    filter_gender(input,output,session)
-  })
-  observeEvent(input$ipt_GSE_slider,{
-    filter_GSE(input,output,session)
-  })
-  observeEvent(input$ipt_AUTHORS_slider,{
-    filter_authors(input,output,session)
-  })
-  observeEvent(input$ipt_TISSUE_slider,{
-    filter_tissue(input,output,session)
+  #Microarray Plot----
+  microarray_plot <- reactive({
+    shinyjs::show(id='spinner-mca')
+    renderPlot({
+      Sys.sleep(1)
+      gene_input <- if (input$organism_mca == 'Mus Musculus') {
+        str_to_upper(input$gene.m_mca)
+      } else if (input$organism_mca == 'Homo Sapiens')  {
+        str_to_upper(input$gene.h_mca)
+      }
+      plot <- tryCatch(generate_plots_Microarray(input$organism_mca,filtered_names_mca(), gene_input), 
+                       error = function(e) e, finally = h3(paste('Has no data for ',gene_input,' gene !')))
+      tryCatch(print(plot), error = function(e) e, finally = h3(paste('Has no data for ',gene_input,' gene !')))
+    })
   })
   
+  observeEvent(input$render_plot_mca, {
+    shinyjs::show(selector = 'div.shiny-spinner-hideui')
+    output$main_plot_mca <- microarray_plot()
+  })
   
+  #Microarray plot download----
+
+  output$download_plot_mca <- downloadHandler(
+    filename = function() {
+      gene_input <- str_to_title(input$gene.m_mca)
+      organims <- str_to_title(input$organism_mca)
+      paste0(gene_input, "_", organims, ".png")
+    },
+    content = function(file) {
+      withProgress(
+        message = 'Generating plot...',
+        detail = 'Please wait while the file is being prepared.',
+        value = 0, {
+          # Increment progress before generating the plot
+          incProgress(0.3)
+          
+          gene_input <- input$gene.m_mca
+          
+          # Gera o gráfico utilizando generate_plots_RNAseq
+          plot <- generate_plots_Microarray(input$organism_mca, filtered_names_mca(), gene_select = gene_input)
+          # Increment progress during saving the file
+          incProgress(0.6)
+          
+          # Salva o gráfico
+          ggsave(file, plot, dpi = 500, width = 15, height = 10)
+          
+          # Increment para finalizar
+          incProgress(1)
+        }
+      )
+    }
+  )
+  
+  
+  
+ 
+  
+  observeEvent(input$homeLink,{
+    print('link to Home page !!!')
+  })
+  
+  observeEvent(input$microArrayLink,{
+    print('link to microArray page !!!')
+  })
+  
+  observeEvent(input$rnaSeqLink,{
+    print('link to RNA-Seq page !!!')
+  })
+  
+  observeEvent(input$scRnaSeqLink, {
+    print('Link to SCRNA-Seq page !!!')
+    
+    # Resetar os valores dos inputs de gene
+    updatePickerInput(session, "gene.m.sc", selected = NULL)
+    updatePickerInput(session, "gene.h.sc", selected = NULL)
+    
+    # Resetar o gráfico (limpando o output relacionado)
+    output$main_plot_SCrnaseq <- renderPlot(NULL)
+  })
+
+  observeEvent(input$sc_page, {
+    print('Link to SCRNA-Seq page !!!')
+    
+    # Resetar os valores dos inputs de gene
+    updatePickerInput(session, "gene.m.sc", selected = NULL)
+    updatePickerInput(session, "gene.h.sc", selected = NULL)
+    
+    # Resetar o gráfico (limpando o output relacionado)
+    output$main_plot_SCrnaseq <- renderPlot(NULL)
+  })
+  
+  observeEvent(input$rna_page, {
+    print('Link to RNA-seq page !!!')
+    output$main_plot_rnaseq <- renderPlot(NULL)
+  })
+  
+  observeEvent(input$micro_page, {
+    print('Link to Microarray  page !!!')
+  })
+
 })

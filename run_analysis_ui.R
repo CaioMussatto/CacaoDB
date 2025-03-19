@@ -34,7 +34,7 @@ rnaSeq.ui <- function() {
             pickerInput(
               inputId = 'organism',
               label = NULL,
-              choices = organism_list[1:2],
+              choices = organism_list,
               options = list(`style` = "btn btn-primary p-2 mt-1")
             )
           )
@@ -47,14 +47,15 @@ rnaSeq.ui <- function() {
             shinyjs::hidden(pickerInput(
               inputId = "gene.m",
               label = NULL,
-              choices = gene_anno[['Mus musculus (mouse)']],
-              selected = 'Dpp9',
+              choices = gene_RNA$Mouse,
+              selected = 'Dmd',
               options = list(`style` = "btn btn-primary p-2 mt-1", `live-search` = TRUE)
             )),
             shinyjs::hidden(pickerInput(
               inputId = "gene.h",
               label = NULL,
-              choices = gene_anno[['Homo sapiens (human)']],
+              choices = gene_RNA$Human,
+              selected = "Il6",
               options = list(`style` = "btn btn-primary p-2 mt-1", `live-search` = TRUE)
             ))
           )
@@ -143,7 +144,7 @@ microArray.ui <- function() {
             pickerInput(
               inputId = 'organism_mca',
               label = NULL,
-              choices = organism_list[1:2],
+              choices = organism_list,
               options = list(`style` = "btn btn-primary p-2 mt-1")
             )
           )

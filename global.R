@@ -27,8 +27,8 @@ library(shinycssloaders)
 
 organism_list <- c('None','Mus Musculus','Homo Sapiens')
 #source(paste(getwd(),'/Mysql_datas.R',sep=''))
+gene_RNA <- readRDS('gene_RNA.rds')
 gene_anno <- readRDS('gene_list.rds')
-
 source(paste(getwd(),'/Microarray_codes.R',sep=''))
 #source(paste(getwd(),'/homepage.R',sep=''))
 # if(exists('gene_list')){
@@ -36,7 +36,7 @@ source(paste(getwd(),'/Microarray_codes.R',sep=''))
 # }else{
 #   gene_list <- readRDS('gene_list.rds')
 # }
-gene_anno$`Mus musculus (mouse)` <- gsub("\\..*","",gene_anno$`Mus musculus (mouse)`)
+# gene_anno$RNA_SEQ$`Mus musculus (mouse)` <- gsub("\\..*","",gene_anno$`Mus musculus (mouse)`)
 
 choices_RNAseq <- readRDS('choices_RNAseq.rds')
 
@@ -97,6 +97,7 @@ library(shinydashboardPlus)
 library(shinyWidgets)
 
 source('RNA_seq_codes.R')
+source('Microarray_codes.R')
 
  if(!exists('tissue_list')){
  tissue_list <- readRDS('todos.RDS')

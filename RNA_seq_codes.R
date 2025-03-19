@@ -458,300 +458,344 @@ filter_tissue <- function(input,output,session){
 
 
 generate_plots_RNAseq <- function(organism,filter_tables,gene_select=''){
-  if(gene_select!='' | !is.null(gene_select)){
-    
-    if(organism=='Mus Musculus'){
-      library(ggplot2)
-      
-      
-      
-      filtered_deg_combined_df <- do.call(cbind, lapply(Deg_data_list_rnaseq, function(df) {
-        filtered_df <- df[df$name == gene_select, ]
-        filtered_df <- na.omit(filtered_df)
-        filtered_df <- filtered_df[,-which(names(filtered_df) %in% c('gene','name'))]
-        
-        filtered_df <- as.data.frame(t(filtered_df))
-      }))
-      
-      names(filtered_deg_combined_df) <- filtered_deg_combined_df['file_deg',]
-      
-      filtered_deg_combined_df <- as.data.frame(t(filtered_deg_combined_df))
-      
-      
-      filtered_deg_combined_df <- merge(filtered_deg_combined_df, Sample_annotation_rnaseq_SHINY,by='file_deg', all.x = T)
-      filtered_deg_combined_df <- filtered_deg_combined_df[!duplicated(filtered_deg_combined_df$file_deg),]
-      filtered_deg_combined_df$log2FoldChange <- as.numeric(filtered_deg_combined_df$log2FoldChange)
-      filtered_deg_combined_df[filtered_deg_combined_df$cacaoStudyID == c('CCSTID2024016'),'log2FoldChange'] <- 
-        filtered_deg_combined_df[filtered_deg_combined_df$cacaoStudyID == c('CCSTID2024016'),'log2FoldChange']  * -1
-      
-      filtered_deg_combined_df[filtered_deg_combined_df$cacaoStudyID == c('CCSTID2024015'),'log2FoldChange'] <- 
-        filtered_deg_combined_df[filtered_deg_combined_df$cacaoStudyID == c('CCSTID2024015'),'log2FoldChange']  * -1
-      
-      filtered_deg_combined_df <- filtered_deg_combined_df%>%
-        mutate(Differential_expression = case_when(log2FoldChange >0 ~ 'Up', log2FoldChange <0 ~ 'Down'))
-      filtered_deg_combined_df$Differential_expression <- as.factor(filtered_deg_combined_df$Differential_expression)
-      filtered_deg_combined_df <- filter(filtered_deg_combined_df, cacaoStudyID %in% filter_tables$cacaoStudyID)
-      
-      deg_colors <- c('Up' ='#ef233c','Down'='#023e8a')
-      pp <- ggplot(filtered_deg_combined_df, aes(x = cacaoStudyID, y = log2FoldChange,fill=Differential_expression)) +
-        geom_bar(stat = "identity") +
-        geom_text(aes(label = round(log2FoldChange, 2),
-                      hjust = ifelse(log2FoldChange < 0, 1.5, -1),
-                      vjust = 0.5),
-                  size = 3) +
-        theme(
-          axis.text.y = element_blank(),
-          axis.text.x = element_text(size = 10,face = 'bold'),
-          legend.position="bottom",
-          legend.title = element_text(size=10,face='bold'),
-          legend.text = element_text(size=10),
-          panel.grid.major.y = element_line(linewidth = 0.25,color='#a2a2a2',linetype = "dotted"),
-          panel.background = element_blank(),
-          axis.ticks.x = element_blank(),
-          axis.ticks.y = element_blank(),
-          axis.title.x = element_text(size = 10,face='bold'))+
-        scale_fill_manual(values = deg_colors)+
-        xlab("") +
-        ylab("log2FoldChange") +
-        guides(fill=guide_legend(title="DEG's"))+
-        labs(colour='Differential_expression')+
-        coord_flip()+ 
-        geom_hline(yintercept = c(-1,1), col = "#cdb4db",show.legend = T)+
-        scale_y_continuous(breaks= seq(round(min(filtered_deg_combined_df$log2FoldChange) - 0.5), 
-                                       round(max(filtered_deg_combined_df$log2FoldChange) + 0.5), by = 1),
-                           limits = c(min(filtered_deg_combined_df$log2FoldChange) - 0.5,
-                                      max(filtered_deg_combined_df$log2FoldChange) + 0.5)) 
-      
-      
-      
-      
-      filtered_combined_df <- do.call(rbind, lapply(count_data_list_rnaseq, function(df) {
-        
-        filtered_df <- df[which(df$name == gene_select), ]
-        if(nrow(filtered_df) >0 ){
-          filtered_df <- na.omit(filtered_df)
-          filtered_df <- filtered_df[,-which(names(filtered_df) %in% c('gene','name'))]
-          rownames(filtered_df) <- gene_select
-          filtered_df <- as.data.frame(t(filtered_df))}
-      }))
-      
-      
-      names(filtered_combined_df) <- 'expression'
-      
-      
-      
-      
-      
-      filtered_combined_df$sample <- unlist(lapply(rownames(filtered_combined_df), function(x){str_split(x,'tsv.')[[1]][2] }))
-      filtered_combined_df$file_rlog <- unlist(lapply(rownames(filtered_combined_df), function(x){paste(unlist(str_split(x,'tsv.')[[1]][1]),'tsv',sep='') })
-      )
-      
-      
-      
-      filtered_combined_df$cacaoID = ''
-      
-      length(which(filtered_combined_df$sample %in% Sample_annotation_rnaseq_SHINY$samples))
-      for (row in 1:nrow(filtered_combined_df)) {
-        rsample= filtered_combined_df[row,'sample']
-        rfile= filtered_combined_df[row,'file_rlog']
-        filtered_combined_df$cacaoID[row]<-  filter(Sample_annotation_rnaseq_SHINY, samples==rsample & file_rlog ==rfile)$cacaoID
-      }
-      
-      
-      filtered_combined_df <- merge(filtered_combined_df, Sample_annotation_rnaseq_SHINY,by=c('cacaoID','file_rlog'))
-      
-      
-      
-      
-      filtered_combined_df$condition <- as.factor(filtered_combined_df$condition)
-      filtered_combined_df$code <- as.factor(filtered_combined_df$code)
-      filtered_combined_df$expression <-as.numeric(filtered_combined_df$expression)
-      filtered_combined_df <- filter(filtered_combined_df, cacaoStudyID %in% filter_tables$cacaoStudyID)
-      
-      
-      row.names(filtered_combined_df) <- filtered_combined_df$cacaoID
-      
-      conditions_colors <- c('Control'='#4361ee','Cachexia'='#f72585')
-      p<-ggplot(filtered_combined_df, aes(y=cacaoStudyID, x=expression,fill=condition, color=condition))+
-        geom_boxplot(alpha=75,outlier.size = 0.5,size = 0.5) +
-        theme(legend.position="bottom",
-              title = element_text(face='bold'),
-              legend.title = element_text(size=10,face='bold'),
-              legend.text = element_text(size=10),
-              axis.text.y = element_blank(),
-              axis.text.x = element_text(size = 10,face = 'bold'),
-              panel.background = element_blank(),
-              panel.grid.major.y = element_line(linewidth = 0.25,color='#a2a2a2df',linetype = "dotted"),
-              axis.title.x = element_text(size = 10,face='bold')
-              # panel.grid.minor.x = element_line(size = 0.75,color='#454545',linetype = "dotted")
-        ) +
-        scale_fill_manual(values = conditions_colors)+
-        scale_color_manual(values = conditions_colors)+
-        xlab("Expression levels") +
-        ylab("") +
-        labs( colour='condition')
-  
-      #-----------------------
-      
-      filtered_deg_combined_df$value <-0
-      filtered_deg_combined_df$padj <- as.numeric(filtered_deg_combined_df$padj)
-      filtered_deg_combined_df$pvalue <- as.numeric(filtered_deg_combined_df$pvalue)
-      
-      p1 <- ggplot(filtered_deg_combined_df, aes(x = value, y = cacaoStudyID))+
-        geom_text(
-          fill='#edede9',
-          size=3,
-          label.size = 0.025,
-          label.padding = unit(0.25, "lines"),
-          label= round(filtered_deg_combined_df$padj,4)
-        )+
-        theme(axis.text.y = element_blank(),
-              axis.text.x = element_blank(),
-              legend.position="none",
-              panel.grid.major.y = element_line(linewidth = 0.25,color='#a2a2a260',linetype = "dotted"),
-              panel.background = element_blank(),
-              axis.ticks.x = element_blank(),
-              axis.ticks.y = element_blank(),
-              axis.title.x = element_text(size = 10,face='bold'))+  
-        xlab("adj P.val") +
-        ylab("") + xlim(-0.0025,0.0025)
-      p1
-      
-      p2 <- ggplot(filtered_deg_combined_df, aes(x = value, y = cacaoStudyID))+
-        geom_text(
-          fill='#edede9',
-          size=3,
-          label.size = 0.025,
-          label.padding = unit(0.25, "lines"),
-          label= round(filtered_deg_combined_df$pvalue,4)
-        )+
-        theme(axis.text.y = element_blank(),
-              axis.text.x = element_blank(),
-              legend.position="none",
-              panel.grid.major.y = element_line(linewidth = 0.25,color='#a2a2a260',linetype = "dotted"),
-              panel.background = element_blank(),
-              axis.ticks.x = element_blank(),
-              axis.ticks.y = element_blank(),
-              axis.title.x = element_text(size = 10,face='bold'))+  
-        xlab("P.value") +
-        ylab("") + xlim(-0.0025,0.0025)
-      p2
-      
-      p00 <- ggplot(filtered_deg_combined_df, aes(x = value, y = cacaoStudyID))+
-        geom_text(
-          fill='#edede9',
-          size=3,
-          label.size = 0.025,
-          label.padding = unit(0.25, "lines"),
-          label= filtered_deg_combined_df$author
-        )+
-        theme(axis.text.y = element_blank(),
-              axis.text.x = element_blank(),
-              legend.position="none",
-              panel.grid.major.y = element_line(linewidth = 0.25,color='#a2a2a260',linetype = "dotted"),
-              panel.background = element_blank(),
-              axis.ticks.x = element_blank(),
-              axis.ticks.y = element_blank(),
-              axis.title.x = element_text(size = 10,face='bold'))+  
-        xlab("Author") +
-        ylab("") + xlim(-0.0025,0.0025)
-      p00
-      
-      p0 <- ggplot(filtered_deg_combined_df, aes(x = value, y = cacaoStudyID))+
-        geom_text(
-          fill='#edede9',
-          size=3,
-          label.size = 0.025,
-          label.padding = unit(0.25, "lines"),
-          label= filtered_deg_combined_df$year
-        )+
-        theme(axis.text.y = element_blank(),
-              axis.text.x = element_blank(),
-              legend.position="none",
-              panel.grid.major.y = element_line(linewidth = 0.25,color='#a2a2a260',linetype = "dotted"),
-              panel.background = element_blank(),
-              axis.ticks.x = element_blank(),
-              axis.ticks.y = element_blank(),
-              axis.title.x = element_text(size = 10,face='bold'))+  
-        xlab("Year") +
-        ylab("") + xlim(-0.0025,0.0025)
-      p0
-      
-      p01 <- ggplot(filtered_deg_combined_df, aes(x = value, y = cacaoStudyID))+
-        geom_text(
-          fill='#edede9',
-          size=3,
-          label.size = 0.025,
-          label.padding = unit(0.25, "lines"),
-          label= filtered_deg_combined_df$tissue
-        )+
-        theme(axis.text.y = element_blank(),
-              axis.text.x = element_blank(),
-              legend.position="none",
-              panel.grid.major.y = element_line(linewidth = 0.25,color='#a2a2a260',linetype = "dotted"),
-              panel.background = element_blank(),
-              axis.ticks.x = element_blank(),
-              axis.ticks.y = element_blank(),
-              axis.title.x = element_text(size = 10,face='bold'))+  
-        xlab("Tissue") +
-        ylab("") + xlim(-0.0025,0.0025)
-      p01
-      
-      p02 <- ggplot(filtered_deg_combined_df, aes(x = value, y = cacaoStudyID))+
-        geom_text(
-          fill='#edede9',
-          size=3,
-          label.size = 0.025,
-          label.padding = unit(0.25, "lines"),
-          label= filtered_deg_combined_df$code
-        )+
-        theme(axis.text.y = element_blank(),
-              axis.text.x = element_blank(),
-              legend.position="none",
-              panel.grid.major.y = element_line(linewidth = 0.25,color='#a2a2a260',linetype = "dotted"),
-              panel.background = element_blank(),
-              axis.ticks.x = element_blank(),
-              axis.ticks.y = element_blank(),
-              axis.title.x = element_text(size = 10,face='bold'))+  
-        xlab("GEO Code") +
-        ylab("") + xlim(-0.0025,0.0025)
-      p02
-      
-      
-      p03 <- ggplot(filtered_deg_combined_df, aes(x = value, y = cacaoStudyID))+
-        geom_text(
-          fill='#edede9',
-          size=3,
-          label.size = 0.025,
-          label.padding = unit(0.25, "lines"),
-          label= filtered_deg_combined_df$cacaoStudyID
-        )+
-        theme(axis.text.y = element_blank(),
-              axis.text.x = element_blank(),
-              legend.position="none",
-              panel.grid.major.y = element_line(linewidth = 0.25,color='#a2a2a260',linetype = "dotted"),
-              panel.background = element_blank(),
-              axis.ticks.x = element_blank(),
-              axis.ticks.y = element_blank(),
-              axis.title.x = element_text(size = 10,face='bold'))+  
-        xlab("CaCaO ID") +
-        ylab("") + xlim(-0.0025,0.0025)
-      p03
-      
-      pp_list <- list(p00,p0,p01,p02,p03,p,pp,p1,p2)
-      pp3 <- wrap_plots(pp_list,ncol=9)+plot_layout(widths =c(0.6,0.4,0.7,0.8,1.2,2.8,2.8,0.5,0.5), heights = 1, ncol=9)+
-        plot_annotation(gene_select, caption = 'CacaO Lab',theme=theme(plot.title=element_text(hjust=0.5, size = 15, face='bold')))
-      pp3
-      return(pp3)
-    }else if(organism=='Homo Sapiens'){
-      #CODE FOR HOMO SAPIENS
-    }
+  filter_tables <- Sample_annotation_rnaseq_SHINY[which(Sample_annotation_rnaseq_SHINY$cacaoStudyID %in% filter_tables$cacaoStudyID),]
+  if(organism == "Mus Musculus"){
+    Sample_annotation_rnaseq_SHINY <- Sample_annotation_rnaseq_SHINY %>%
+      filter(organism == "MusMusculus")
+    Deg_data_list_rnaseq <- Deg_data_list_rnaseq[Sample_annotation_rnaseq_SHINY$file_deg]
+    nomes_selecionados <- unique(Sample_annotation_rnaseq_SHINY$file_rlog)
+    count_data_list_rnaseq <- count_data_list_rnaseq[intersect(names(count_data_list_rnaseq), nomes_selecionados)]
     
   }
+  if (organism == "Homo Sapiens"){
+    Sample_annotation_rnaseq_SHINY <- Sample_annotation_rnaseq_SHINY %>%
+      filter(organism == "HomoSapiens")
+    #cat("Samples usados", Sample_annotation_rnaseq_SHINY$file_deg)
+    Deg_data_list_rnaseq <- Deg_data_list_rnaseq[Sample_annotation_rnaseq_SHINY$file_deg]
+    nomes_selecionados <- unique(Sample_annotation_rnaseq_SHINY$file_rlog)
+    #cat("Nomes Selecionados", nomes_selecionados, "\n")
+    count_data_list_rnaseq <- count_data_list_rnaseq[intersect(names(count_data_list_rnaseq), nomes_selecionados)]
+    #print("Count data:")
+    #print(count_data_list_rnaseq)
+  }
+  else{
+    print("Input a valid organism")
+  }
+  filtered_deg_combined_df <- do.call(cbind, lapply(Deg_data_list_rnaseq, function(df) {
+    print("Antes do filtro por gene_select:")
+    print(head(df))  # Ver as primeiras linhas do df
+    
+    filtered_df <- df[df$name == gene_select, ]
+    print("Após o filtro por gene_select:")
+    print(filtered_df)
+    
+    if (nrow(filtered_df) == 0) {
+      warning("filtered_df está vazio após o filtro de gene_select!")
+      return(NULL)  # Evita erro no cbind()
+    }
+    filtered_df <- df[df$name == gene_select, ]
+    filtered_df <- na.omit(filtered_df)
+    filtered_df <- filtered_df[,-which(names(filtered_df) %in% c('gene','name'))]
+    
+    filtered_df <- as.data.frame(t(filtered_df))
+  }))
+  print(paste0("Filtered df: ", filtered_deg_combined_df))
+  names(filtered_deg_combined_df) <- filtered_deg_combined_df['file_deg',]
+  
+  filtered_deg_combined_df <- as.data.frame(t(filtered_deg_combined_df))
   
   
+  
+  filtered_deg_combined_df <- merge(filtered_deg_combined_df, Sample_annotation_rnaseq_SHINY,by='file_deg', all.x = T)
+  filtered_deg_combined_df <- filtered_deg_combined_df[!duplicated(filtered_deg_combined_df$file_deg),]
+  filtered_deg_combined_df$log2FoldChange <- as.numeric(filtered_deg_combined_df$log2FoldChange)
+  if ('CCSTID2024016' %in% filtered_deg_combined_df$cacaoStudyID) {
+    filtered_deg_combined_df[filtered_deg_combined_df$cacaoStudyID == 'CCSTID2024016', 'log2FoldChange'] <- 
+      filtered_deg_combined_df[filtered_deg_combined_df$cacaoStudyID == 'CCSTID2024016', 'log2FoldChange'] * -1
+  }
+  
+  # Verificar se 'CCSTID2024015' está presente na coluna cacaoStudyID
+  if ('CCSTID2024015' %in% filtered_deg_combined_df$cacaoStudyID) {
+    filtered_deg_combined_df[filtered_deg_combined_df$cacaoStudyID == 'CCSTID2024015', 'log2FoldChange'] <- 
+      filtered_deg_combined_df[filtered_deg_combined_df$cacaoStudyID == 'CCSTID2024015', 'log2FoldChange'] * -1
+  }
+    filtered_deg_combined_df <- filtered_deg_combined_df%>%
+      mutate(Differential_expression = case_when(log2FoldChange >0 ~ 'Up', log2FoldChange <0 ~ 'Down'))
+    filtered_deg_combined_df$Differential_expression <- as.factor(filtered_deg_combined_df$Differential_expression)
+    
+    if(organism == "Mus Musculus"){
+      filtered_deg_combined_df <- filter(filtered_deg_combined_df, cacaoStudyID %in% filter_tables$cacaoStudyID)
+    }
+    
+    if (all(!is.finite(filtered_deg_combined_df$log2FoldChange))) {
+      warning("A coluna 'log2FoldChange' não contém valores finitos. Definindo limites padrão para o gráfico.")
+      min_log2FC <- -1  # Valor padrão mínimo
+      max_log2FC <- 1   # Valor padrão máximo
+    } else {
+      min_log2FC <- min(filtered_deg_combined_df$log2FoldChange, na.rm = TRUE)
+      max_log2FC <- max(filtered_deg_combined_df$log2FoldChange, na.rm = TRUE)
+    }
+    
+    #print(filtered_deg_combined_df)
+    
+    deg_colors <- c('Up' ='#ef233c','Down'='#023e8a')
+    pp <- ggplot(filtered_deg_combined_df, aes(x = cacaoStudyID, y = log2FoldChange,fill=Differential_expression)) +
+      geom_bar(stat = "identity") +
+      geom_text(aes(label = round(log2FoldChange, 2),
+                    hjust = ifelse(log2FoldChange < 0, 1.5, -1),
+                    vjust = 0.5),
+                size = 3) +
+      theme(
+        axis.text.y = element_blank(),
+        axis.text.x = element_text(size = 10,face = 'bold'),
+        legend.position="bottom",
+        legend.title = element_text(size=10,face='bold'),
+        legend.text = element_text(size=10),
+        panel.grid.major.y = element_line(linewidth = 0.25,color='#a2a2a2',linetype = "dotted"),
+        panel.background = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.title.x = element_text(size = 10,face='bold'))+
+      scale_fill_manual(values = deg_colors)+
+      xlab("") +
+      ylab("log2FoldChange") +
+      guides(fill=guide_legend(title="DEG's"))+
+      labs(colour='Differential_expression')+
+      coord_flip()+ 
+      geom_hline(yintercept = c(-1,1), col = "#cdb4db",show.legend = T)+
+      scale_y_continuous(
+        breaks = seq(round(min_log2FC - 0.5), 
+                     round(max_log2FC + 0.5), by = 1),
+        limits = c(min_log2FC - 0.5,
+                   max_log2FC + 0.5)
+      )
+    
+    
+    
+    
+    filtered_combined_df <- do.call(rbind, lapply(count_data_list_rnaseq, function(df) {
+      
+      filtered_df <- df[which(df$name == gene_select), ]
+      if(nrow(filtered_df) >0 ){
+        filtered_df <- na.omit(filtered_df)
+        filtered_df <- filtered_df[,-which(names(filtered_df) %in% c('gene','name'))]
+        rownames(filtered_df) <- gene_select
+        filtered_df <- as.data.frame(t(filtered_df))}
+    }))
+    
+    
+    colnames(filtered_combined_df) <- 'expression'
+    
+    
+    
+    
+    
+    filtered_combined_df$sample <- unlist(lapply(rownames(filtered_combined_df), function(x){str_split(x,'tsv.')[[1]][2] }))
+    filtered_combined_df$file_rlog <- unlist(lapply(rownames(filtered_combined_df), function(x){paste(unlist(str_split(x,'tsv.')[[1]][1]),'tsv',sep='') })
+    )
+    print("pos unlist")
+    print(unique(filtered_combined_df$sample))
+    print("pos unlist rlog")
+    print(unique(filtered_combined_df$file_rlog))
+    
+    
+    filtered_combined_df$cacaoID = ''
+    
+    length(which(filtered_combined_df$sample %in% Sample_annotation_rnaseq_SHINY$samples))
+    for (row in 1:nrow(filtered_combined_df)) {
+      rsample= filtered_combined_df[row,'sample']
+      rfile= filtered_combined_df[row,'file_rlog']
+      filtered_combined_df$cacaoID[row]<-  filter(Sample_annotation_rnaseq_SHINY, samples==rsample & file_rlog ==rfile)$cacaoID
+    }
+    
+    
+    filtered_combined_df <- merge(filtered_combined_df, Sample_annotation_rnaseq_SHINY,by=c('cacaoID','file_rlog'))
+    
+    
+    
+    
+    filtered_combined_df$condition <- as.factor(filtered_combined_df$condition)
+    filtered_combined_df$code <- as.factor(filtered_combined_df$code)
+    filtered_combined_df$expression <-as.numeric(filtered_combined_df$expression)
+    filtered_combined_df <- filter(filtered_combined_df, cacaoStudyID %in% filter_tables$cacaoStudyID)
+    
+    
+    row.names(filtered_combined_df) <- filtered_combined_df$cacaoID
+    
+    conditions_colors <- c('Control'='#4361ee','Cachexia'='#f72585')
+    p<-ggplot(filtered_combined_df, aes(y=cacaoStudyID, x=expression,fill=condition, color=condition))+
+      geom_boxplot(alpha=75,outlier.size = 0.5,size = 0.5) +
+      theme(legend.position="bottom",
+            title = element_text(face='bold'),
+            legend.title = element_text(size=10,face='bold'),
+            legend.text = element_text(size=10),
+            axis.text.y = element_blank(),
+            axis.text.x = element_text(size = 10,face = 'bold'),
+            panel.background = element_blank(),
+            panel.grid.major.y = element_line(linewidth = 0.25,color='#a2a2a2df',linetype = "dotted"),
+            axis.title.x = element_text(size = 10,face='bold')
+            # panel.grid.minor.x = element_line(size = 0.75,color='#454545',linetype = "dotted")
+      ) +
+      scale_fill_manual(values = conditions_colors)+
+      scale_color_manual(values = conditions_colors)+
+      xlab("Expression levels") +
+      ylab("") +
+      labs( colour='condition')
+    
+    #-----------------------
+    
+    filtered_deg_combined_df$value <-0
+    filtered_deg_combined_df$padj <- as.numeric(filtered_deg_combined_df$padj)
+    filtered_deg_combined_df$pvalue <- as.numeric(filtered_deg_combined_df$pvalue)
+    
+    p1 <- ggplot(filtered_deg_combined_df, aes(x = value, y = cacaoStudyID))+
+      geom_text(
+        fill='#edede9',
+        size=3,
+        label.size = 0.025,
+        label.padding = unit(0.25, "lines"),
+        label= round(filtered_deg_combined_df$padj,4)
+      )+
+      theme(axis.text.y = element_blank(),
+            axis.text.x = element_blank(),
+            legend.position="none",
+            panel.grid.major.y = element_line(linewidth = 0.25,color='#a2a2a260',linetype = "dotted"),
+            panel.background = element_blank(),
+            axis.ticks.x = element_blank(),
+            axis.ticks.y = element_blank(),
+            axis.title.x = element_text(size = 10,face='bold'))+  
+      xlab("adj P.val") +
+      ylab("") + xlim(-0.0025,0.0025)
+    p1
+    
+    p2 <- ggplot(filtered_deg_combined_df, aes(x = value, y = cacaoStudyID))+
+      geom_text(
+        fill='#edede9',
+        size=3,
+        label.size = 0.025,
+        label.padding = unit(0.25, "lines"),
+        label= round(filtered_deg_combined_df$pvalue,4)
+      )+
+      theme(axis.text.y = element_blank(),
+            axis.text.x = element_blank(),
+            legend.position="none",
+            panel.grid.major.y = element_line(linewidth = 0.25,color='#a2a2a260',linetype = "dotted"),
+            panel.background = element_blank(),
+            axis.ticks.x = element_blank(),
+            axis.ticks.y = element_blank(),
+            axis.title.x = element_text(size = 10,face='bold'))+  
+      xlab("P.value") +
+      ylab("") + xlim(-0.0025,0.0025)
+    p2
+    
+    p00 <- ggplot(filtered_deg_combined_df, aes(x = value, y = cacaoStudyID))+
+      geom_text(
+        fill='#edede9',
+        size=3,
+        label.size = 0.025,
+        label.padding = unit(0.25, "lines"),
+        label= filtered_deg_combined_df$author
+      )+
+      theme(axis.text.y = element_blank(),
+            axis.text.x = element_blank(),
+            legend.position="none",
+            panel.grid.major.y = element_line(linewidth = 0.25,color='#a2a2a260',linetype = "dotted"),
+            panel.background = element_blank(),
+            axis.ticks.x = element_blank(),
+            axis.ticks.y = element_blank(),
+            axis.title.x = element_text(size = 10,face='bold'))+  
+      xlab("Author") +
+      ylab("") + xlim(-0.0025,0.0025)
+    p00
+    
+    p0 <- ggplot(filtered_deg_combined_df, aes(x = value, y = cacaoStudyID))+
+      geom_text(
+        fill='#edede9',
+        size=3,
+        label.size = 0.025,
+        label.padding = unit(0.25, "lines"),
+        label= filtered_deg_combined_df$year
+      )+
+      theme(axis.text.y = element_blank(),
+            axis.text.x = element_blank(),
+            legend.position="none",
+            panel.grid.major.y = element_line(linewidth = 0.25,color='#a2a2a260',linetype = "dotted"),
+            panel.background = element_blank(),
+            axis.ticks.x = element_blank(),
+            axis.ticks.y = element_blank(),
+            axis.title.x = element_text(size = 10,face='bold'))+  
+      xlab("Year") +
+      ylab("") + xlim(-0.0025,0.0025)
+    p0
+    
+    p01 <- ggplot(filtered_deg_combined_df, aes(x = value, y = cacaoStudyID))+
+      geom_text(
+        fill='#edede9',
+        size=3,
+        label.size = 0.025,
+        label.padding = unit(0.25, "lines"),
+        label= filtered_deg_combined_df$tissue
+      )+
+      theme(axis.text.y = element_blank(),
+            axis.text.x = element_blank(),
+            legend.position="none",
+            panel.grid.major.y = element_line(linewidth = 0.25,color='#a2a2a260',linetype = "dotted"),
+            panel.background = element_blank(),
+            axis.ticks.x = element_blank(),
+            axis.ticks.y = element_blank(),
+            axis.title.x = element_text(size = 10,face='bold'))+  
+      xlab("Tissue") +
+      ylab("") + xlim(-0.0025,0.0025)
+    p01
+    
+    p02 <- ggplot(filtered_deg_combined_df, aes(x = value, y = cacaoStudyID))+
+      geom_text(
+        fill='#edede9',
+        size=3,
+        label.size = 0.025,
+        label.padding = unit(0.25, "lines"),
+        label= filtered_deg_combined_df$code
+      )+
+      theme(axis.text.y = element_blank(),
+            axis.text.x = element_blank(),
+            legend.position="none",
+            panel.grid.major.y = element_line(linewidth = 0.25,color='#a2a2a260',linetype = "dotted"),
+            panel.background = element_blank(),
+            axis.ticks.x = element_blank(),
+            axis.ticks.y = element_blank(),
+            axis.title.x = element_text(size = 10,face='bold'))+  
+      xlab("GEO Code") +
+      ylab("") + xlim(-0.0025,0.0025)
+    p02
+    
+    
+    p03 <- ggplot(filtered_deg_combined_df, aes(x = value, y = cacaoStudyID))+
+      geom_text(
+        fill='#edede9',
+        size=3,
+        label.size = 0.025,
+        label.padding = unit(0.25, "lines"),
+        label= filtered_deg_combined_df$cacaoStudyID
+      )+
+      theme(axis.text.y = element_blank(),
+            axis.text.x = element_blank(),
+            legend.position="none",
+            panel.grid.major.y = element_line(linewidth = 0.25,color='#a2a2a260',linetype = "dotted"),
+            panel.background = element_blank(),
+            axis.ticks.x = element_blank(),
+            axis.ticks.y = element_blank(),
+            axis.title.x = element_text(size = 10,face='bold'))+  
+      xlab("CaCaO ID") +
+      ylab("") + xlim(-0.0025,0.0025)
+    p03
+    
+    pp_list <- list(p00,p0,p01,p02,p03,p,pp,p1,p2)
+    pp3 <- wrap_plots(pp_list,ncol=9)+plot_layout(widths =c(0.6,0.4,0.7,0.8,1.2,2.8,2.8,0.5,0.5), heights = 1, ncol=9)+
+      plot_annotation(gene_select, caption = 'CacaO Lab',theme=theme(plot.title=element_text(hjust=0.5, size = 15, face='bold')))
+    pp3
+    return(pp3)
+    
 }
-
 #return filter tables from mysql
 get_filter_tables <- function(){
   return(table_to_filter_rnaseq)

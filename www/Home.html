@@ -27,7 +27,7 @@
         <h2>
             <b>Web Site Under Construction!</b>
         </h2>
-        <img src="./cacao.png" alt="CaCao" class="responsive-image">
+        <img src="./cacao.png" alt="CaCao" class="responsive-image" width="300px" height="150px">
     </div>
     {{homeBody}}
 </div>
@@ -65,5 +65,24 @@
         </div>
     </div>
 </div>
+
+<div class="modal" id="modal_mca" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+    <div class="modal-dialog modal-fullscreen">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title h4" id="exampleModalFullscreenLabel">Full screen modal</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                {{render_filter_ui_microarray}}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                {{ok_btn_filter_mca}}
+            </div>
+        </div>
+    </div>
+</div>
+
 
 <div>{{footer}}</div>
