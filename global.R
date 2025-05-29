@@ -1,6 +1,7 @@
 
 pacotes = c("shiny","shinyWidgets", "shinyjs","shinythemes","stringr","dplyr","ggrepel","ggplot2",
-            "cowplot","gridExtra","patchwork","shinycssloaders","shinyalert")
+            "cowplot","gridExtra","patchwork","shinycssloaders","shinyalert", "factoextra", "matrixStats",
+            "ggpubr", "FactoMineR", "purrr")
 
 # Run the following command to verify that the required packages are installed. If some package
 # is missing, it will be installed automatically
@@ -24,6 +25,11 @@ library(gridExtra)
 library(patchwork)
 library(patchwork)
 library(shinycssloaders)
+library(factoextra)
+library(matrixStats)
+library(ggpubr)
+library(FactoMineR)
+library(purrr)
 
 organism_list <- c('None','Mus Musculus','Homo Sapiens')
 #source(paste(getwd(),'/Mysql_datas.R',sep=''))
@@ -140,7 +146,8 @@ colors <- c( "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd",
              "#969696", "#bdbdbd", "#525252", "#737373", "#252525")
 
 
-# Função 1: UMAP Plot
+#scRNAseq plot ----
+
 plot_umap <- function(expr_data) {
   a <- ggplot(expr_data, aes(x = UMAP_1, y = UMAP_2, color = cell_types)) +
     geom_point(size = 0.8, shape = 16) +
@@ -265,6 +272,193 @@ plot_gene_analysis <- function(expr_data, gene_name, cell.colors) {
 
 
 
+# Metadata functions ----
+
+metadata_filter <- function(df_rnaseq, df_microarray) {
+  select_common <- function(df) {
+    required_cols <- c("cacaoStudyID", "ID_GEO", "Code_GSE", "Autor", "Year", 
+                       "Organism", "Tissue_name", "Platform")
+    existing_cols <- intersect(required_cols, names(df))
+    missing_cols <- setdiff(required_cols, existing_cols)
+    if(length(missing_cols) > 0) {
+      warning(paste("Colunas faltantes no dataframe:", paste(missing_cols, collapse = ", ")))
+    }
+    
+    df %>% select(all_of(existing_cols))
+  }
+  df_rnaseq_clean <- select_common(df_rnaseq)
+  df_microarray_clean <- select_common(df_microarray)
+  
+  # Combinar os dados verticalmente
+  final <- bind_rows(
+    "RNAseq" = df_rnaseq_clean,
+    "Microarray" = df_microarray_clean,
+    .id = "Platform"
+  )
+  
+  return(final)
+}
+
+metadata_values <- metadata_filter(table_to_filter_rnaseq, table_to_filter_Microarray)
+
+pca_plot <- function(plataform, df_name) {
+  require(ggplot2)
+  require(FactoMineR)
+  require(factoextra)
+  require(matrixStats)
+  require(viridis)
+  require(dplyr)
+  
+  tryCatch({
+    # 1. Carregar dados
+    if(plataform == "RNAseq") {
+      df_samples <- Sample_annotation_rnaseq_SHINY %>% 
+        filter(file_rlog == df_name) %>% 
+        select(samples, condition)
+      
+      df_counts <- count_data_list_rnaseq[[df_name]] %>%
+        select(-gene, -name)
+      
+    } else {
+      df_samples <- Sample_annotation_mca_SHINY %>% 
+        filter(file_matrix == df_name) %>% 
+        select(samples, condition)
+      
+      df_counts <- count_data_list_Microarray[[df_name]] %>%
+        select(-ID, -Gene.symbol)
+      print(df_counts)
+    }
+    
+    # 2. Verificar correspondência de amostras
+    if(!all(colnames(df_counts) %in% df_samples$samples)) {
+      stop("Amostras não correspondem entre dados e anotações!")
+    }
+    
+    # 3. Pré-processamento
+    df_samples <- df_samples[match(colnames(df_counts), df_samples$samples), ]
+    df_samples$Mix <- factor(df_samples$condition, 
+                             levels = c("Control", "Cachexia"),
+                             labels = c("Control", "Cachexia"))
+    
+    # 4. Cálculo da PCA
+    df_numeric <- as.matrix(df_counts)
+    rv <- matrixStats::rowVars(df_numeric)
+    ntop <- 500
+    select <- order(rv, decreasing = TRUE)[seq_len(min(ntop, length(rv)))]
+    mat <- t(df_numeric[select, ])
+    pca <- prcomp(mat)
+    
+    # 5. Construção do gráfico (mantendo estrutura original)
+    plot_pca <- fviz_pca_ind(pca, 
+                             invisible = "quali",
+                             col.ind = df_samples$Mix,
+                             addEllipses = FALSE,
+                             pointsize = 5,
+                             labelsize = 4,
+                             geom = c("text", "point"),
+                             legend.title = "Condition",
+                             repel = TRUE,
+                             col.var = "black",
+                             title = df_name,
+                             ellipse.type = "confidence",
+                             ellipse.level = 0.95) +
+      theme_bw() +
+      theme(
+        axis.text = element_text(size = 10),
+        axis.title = element_text(size = 12),
+        legend.text = element_text(size = 12),
+        legend.title = element_text(size = 12),
+        panel.grid.minor = element_blank(),
+        panel.grid.major = element_blank()
+      ) +
+      scale_shape_manual(values = c(19, 19)) +
+      scale_size_manual(values = c(14, 14, 28, 28)) +
+      scale_color_manual(values = c("Control" = "gray", "Cachexia" = "black")) +
+      theme_bw() +
+      theme(
+        axis.text = element_text(size = 10),
+        axis.title = element_text(size = 12),
+        legend.text = element_text(size = 12),
+        legend.title = element_text(size = 12),
+        panel.grid.minor = element_blank(),
+        panel.grid.major = element_blank(),
+        plot.margin = unit(c(1, 1, 1, 1), "cm")
+      ) +
+      stat_ellipse(
+        aes(x = x, y = y, color = df_samples$Mix, group = df_samples$Mix),
+        type = "t",
+        alpha = 1,
+        level = 0.8
+      )
+    
+    # 6. Saída do gráfico
+    print("Deu certo")
+    plot_pca
+    # 7. Salvamento opcional (descomentar se necessário)
+    # ggsave(paste0("PCA_", df_name, ".png"), plot_pca, 
+    #        width = 24, height = 10, units = "in", dpi = 600)
+    
+  }, error = function(e) {
+    message("Erro durante a execução:")
+    message(e$message)
+    return(NULL)
+  })
+}
+
+volcano_plot <- function(plataform, nome) {
+  if(plataform == "RNAseq") {
+    df <- Deg_data_list_rnaseq[[nome]]
+  } else {
+    df <- Deg_data_list_Microarray[[nome]]
+    colnames(df) <- c("name", "ID_001", "padj", "pvalue", "log2FoldChange", "file_deg")
+    df <- na.omit(df)
+    is.na(df)
+  }
+  if (!"Differential_expression" %in% colnames(df)) {
+    print("Creating a Differential expression column")
+    df <- df %>%
+      mutate(Differential_expression = case_when(
+        padj < 0.05 & log2FoldChange > 0 ~ 'Up',
+        padj < 0.05 & log2FoldChange < 0 ~ 'Down',
+        TRUE ~ 'Not significant'  # Define casos não significativos
+      ))
+  }
+  
+  # Corrige a referência ao dataframe e coluna de genes
+  df$delabel <- ifelse(
+    df$name %in% head(df[order(df$padj), "name"], 20),  # Usa 'df' e corrige a coluna
+    df$name, 
+    NA
+  )
+  
+  # Cria o gráfico
+  # Calcular limites dinâmicos
+  x_max <- max(abs(df$log2FoldChange), na.rm = TRUE) * 1.10  # Adiciona 10% ao valor absoluto máximo
+  y_max <- max(-log10(df$padj), na.rm = TRUE) * 1.10        # Adiciona 10% ao valor máximo
+  
+  plot <- ggplot(data = df, aes(x = log2FoldChange, y = -log10(padj), 
+                                col = Differential_expression, label = delabel)) +
+    geom_vline(xintercept = 0, col = "gray", linetype = 'dashed') +
+    geom_hline(yintercept = -log10(0.05), col = "gray", linetype = 'dashed') + 
+    geom_point(size = 1) + 
+    scale_color_manual(
+      values = c("Down" = "#00AFBB", "Not significant" = "grey", "Up" = "#bb0c00"),
+      labels = c("Downregulated", "Not significant", "Upregulated")
+    ) +
+    coord_cartesian(ylim = c(0, y_max), xlim = c(-x_max, x_max)) +  # Limites dinâmicos
+    labs(
+      color = 'Differential Expression',
+      x = expression("log"[2]*"FC"), 
+      y = expression("-log"[10]*"p-value")
+    ) + 
+    scale_x_continuous(breaks = seq(floor(-x_max), ceiling(x_max), by = 2)) +  # Quebras dinâmicas
+    ggtitle(paste0(nome)) +
+    geom_text_repel(max.overlaps = Inf) +
+    theme_classic()
+  
+  print(plot)
+  return(plot)
+}
 
 
 

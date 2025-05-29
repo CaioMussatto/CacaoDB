@@ -492,7 +492,8 @@ generate_plots_Microarray <- function(organism,filter_tables,gene_select=''){
   filter_tables <- Sample_annotation_mca_SHINY[which(Sample_annotation_mca_SHINY$cacaoStudyID %in% filter_tables$cacaoStudyID),]
   gene_select <- toupper(gene_select)
   library(ggplot2)
-  
+  print(paste("Nomes em filter_tables (entrada):", head(filter_tables$cacaoStudyID))) 
+  print(paste("Organismo após filtro:", unique(Sample_annotation_mca_SHINY$organism)))
   if(organism == "Mus Musculus"){
     Sample_annotation_mca_SHINY <- Sample_annotation_mca_SHINY %>%
       filter(organism == "Mus Musculus")
@@ -593,7 +594,6 @@ generate_plots_Microarray <- function(organism,filter_tables,gene_select=''){
         filtered_df <- as.data.frame(t(filtered_df))}
     }))
     
- 
     
     names(filtered_combined_df) <- 'expression'
     
@@ -604,25 +604,30 @@ generate_plots_Microarray <- function(organism,filter_tables,gene_select=''){
     for (row in 1:nrow(filtered_combined_df)) {
       rsample= filtered_combined_df[row,'sample']
       rfile= filtered_combined_df[row,'file_matrix']
-      }
+    }
+    
+    
+
+    
     
 
     filtered_combined_df <- merge(filtered_combined_df, Sample_annotation_mca_SHINY, by=c('file_matrix'))
     
-    print(unique(filtered_combined_df$file_matrix))
+   
+    
     
     filtered_combined_df$condition <- as.factor(filtered_combined_df$condition)
     filtered_combined_df$code <- as.factor(filtered_combined_df$code)
     filtered_combined_df$expression <-as.numeric(filtered_combined_df$expression)
-    filtered_combined_df <- filtered_combined_df[which(filtered_combined_df$cacaoStudyID %in% filter_tables$cacaoStudyID),]
     
+    filtered_combined_df <- filtered_combined_df[which(filtered_combined_df$cacaoStudyID %in% filter_tables$cacaoStudyID),]
+    print(head(filtered_combined_df, n = 3))
     filtered_combined_df <- filtered_combined_df[!duplicated(filtered_combined_df$cacaoStudyID),]
     
     row.names(filtered_combined_df) <- filtered_combined_df$cacaoID
     
-    print(head(filtered_combined_df))
     
-    conditions_colors <- c('Control'='#4361ee','Cachexia'='#f72585')
+    conditions_colors <- c('Control'='gray','Cachexia'='black')
     p<-ggplot(filtered_combined_df, aes(y=cacaoStudyID, x=expression,fill=condition, color=condition))+
       geom_boxplot(alpha=75,outlier.size = 0.5,size = 0.5) +
       theme(legend.position="bottom",

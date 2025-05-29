@@ -622,7 +622,7 @@ generate_plots_RNAseq <- function(organism,filter_tables,gene_select=''){
     
     row.names(filtered_combined_df) <- filtered_combined_df$cacaoID
     
-    conditions_colors <- c('Control'='#4361ee','Cachexia'='#f72585')
+    conditions_colors <- c('Control'='gray','Cachexia'='black')
     p<-ggplot(filtered_combined_df, aes(y=cacaoStudyID, x=expression,fill=condition, color=condition))+
       geom_boxplot(alpha=75,outlier.size = 0.5,size = 0.5) +
       theme(legend.position="bottom",

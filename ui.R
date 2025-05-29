@@ -16,6 +16,7 @@ library(shinydashboard)
 source(paste(getwd(),'/run_analysis_ui.R',sep=''))
 source(paste(getwd(),'/SC_seq_codes.R',sep=''))
 source(paste(getwd(),'/global.R',sep=''))
+source(paste(getwd(),'/metadata.R',sep=''))
 
 jsSetImg <- "shinyjs.setImg = function(params){document.getElementById('main_plot_SCrnaseq').setAttribute('src', params);}"
 # jsStopLoader <- "shiny.stopLoader = function(){document.getElementById('loader').add('hidden');alert('stopping ?');}"
@@ -117,10 +118,12 @@ shinyUI(
                                                    onclick="openPage(event, 'sc_analysis-tab-pane'); setTissue('EMT6'); setOrganism('Mus Musculus')"),
                    ),
                    sc_analysis_body= ScSeq.ui(),
+                   MetadataBody = metadata.ui(),
                    ok_btn_filter = actionButton('ok_filter','OK',icon=icon('OK'),class = "btn btn-success", `data-bs-dismiss`="modal"),        # links
                    home_link = actionLink(href = "#", "Home", class = "nav-link ", inputId = "homeLink", onclick = "openPage(event, 'home-tab-pane')"),
                    rna_seq_link = actionLink(href = "#", "RNA-seq", class = "nav-link ", inputId = "rnaSeqLink", onclick = "openPage(event, 'rnaSeq-tab-pane')"), #
                    sc_rna_seq_link = actionLink(href = "#", "ScRNA-seq", class = "nav-link ", inputId = "scRnaSeqLink", onclick = "openPage(event, 'ScrnaSeq-tab-pane')"), #
+                   metadata_link = actionLink(href = "#", "Metadata", class = "nav-link ", inputId = "metada_page", onclick = "openPage(event, 'Metadadata-tab-pane')"),
                    about_us_link = actionLink(href = "#", "Our team", class = "nav-link ", inputId = "aboutLink", onclick = "openPage(event, 'About-tab-pane')") #
       ),
       # htmlTemplate('modal.html')

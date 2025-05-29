@@ -15,6 +15,7 @@ source(paste(getwd(),'/run_analysis_ui.R',sep=''))
 source(paste(getwd(),'/SC_seq_codes.R',sep=''))
 
 
+
 shinyServer(function(input, output,session) {
   
   #RNASEQ Filtering ----
@@ -194,7 +195,7 @@ shinyServer(function(input, output,session) {
           incProgress(0.6)
           
           # Salva o gráfico
-          ggsave(file, plot, dpi = 500, width = 15, height = 10)
+          ggsave(file, plot, dpi = 600, width = 15, height = 10)
           
           # Increment para finalizar
           incProgress(1)
@@ -415,7 +416,7 @@ shinyServer(function(input, output,session) {
           incProgress(0.6)
           
           # Salva o gráfico
-          ggsave(file, plot, dpi = 500, width = 15, height = 10)
+          ggsave(file, plot, dpi = 600, width = 15, height = 10)
           
           # Incrementa para finalizar
           incProgress(1)
@@ -492,7 +493,12 @@ shinyServer(function(input, output,session) {
   
   
   df_filter_mca <- reactive({
-    filter(get_filter_tables_mca(),  Organism %in% input$organism_mca)
+    selected_organism <- case_when(
+      input$organism_mca == "Homo Sapiens" ~ "Homo sapiens",
+      input$organism_mca == "Mus Musculus" ~ "Mus Musculus",
+      TRUE ~ input$organism_mca
+    )
+    filter(get_filter_tables_mca(),  Organism == selected_organism)
   })
   
   filtered_controls_mca <- reactiveVal(F)
@@ -604,7 +610,7 @@ shinyServer(function(input, output,session) {
           incProgress(0.6)
           
           # Salva o gráfico
-          ggsave(file, plot, dpi = 500, width = 15, height = 10)
+          ggsave(file, plot, dpi = 600, width = 15, height = 10)
           
           # Increment para finalizar
           incProgress(1)
@@ -614,9 +620,178 @@ shinyServer(function(input, output,session) {
   )
   
   
+  #Metadata ----
+  filtered_metadata <- eventReactive(input$run_metadata, {
+    req(input$metadata_platform)
+    
+    df <- metadata_values %>%
+      filter(Platform == input$metadata_platform) %>%
+      select(-Platform)
+    
+    # Criar botões de download com IDs únicos para PCA e Volcano
+    df$`Download PCA` <- sapply(df$cacaoStudyID, function(id) {
+      as.character(
+        tags$a(
+          href = "#",
+          class = "download-btn",
+          "Download PCA",
+          onclick = sprintf("Shiny.setInputValue('download_pca_id', '%s', {priority: 'event'})", id)
+        )
+      )
+    })
+    
+    df$`Download Volcano` <- sapply(df$cacaoStudyID, function(id) {
+      as.character(
+        tags$a(
+          href = "#",
+          class = "download-btn",
+          style = "background-color: #28a745;",  # Cor diferente para diferenciar
+          "Download Volcano",
+          onclick = sprintf("Shiny.setInputValue('download_volcano_id', '%s', {priority: 'event'})", id)
+        )
+      )
+    })
+    
+    return(df)
+  })
+  
+  
+  # Renderizar tabela
+  output$metadata_table <- renderDT({
+    req(filtered_metadata())
+    df <- filtered_metadata()
+    n <- ncol(df)
+    
+    datatable(
+      df,
+      escape = FALSE,
+      selection = 'none',
+      options = list(
+        pageLength = 10,
+        scrollX = TRUE,
+        columnDefs = list(
+          list(targets = n-2, className = "dt-center"),  # Coluna Download PCA
+          list(targets = n-1, className = "dt-center")   # Coluna Download Volcano
+        )
+      ),
+      rownames = FALSE
+    )
+  })
+  
+  # Observador para cliques nos botões de download
+  observeEvent(input$download_pca_id, {
+    req(input$download_pca_id, input$metadata_platform)
+    
+    tryCatch({
+      # Determinar qual tabela usar
+      tbl <- if (input$metadata_platform == "RNAseq") {
+        Sample_annotation_rnaseq_SHINY
+      } else {
+        Sample_annotation_mca_SHINY
+      }
+      
+      # Obter informações do estudo
+      study_info <- tbl %>% 
+        filter(cacaoStudyID == input$download_pca_id)
+      
+      if (nrow(study_info) > 0) {
+        # Obter o identificador do arquivo (não é um caminho real)
+        file_label <- if (input$metadata_platform == "RNAseq") {
+          as.character(study_info$file_rlog[1])
+        } else {
+          as.character(study_info$file_matrix[1])
+        }
+        print(file_label)
+        # Nome para o arquivo de download
+        download_name <- paste0(file_label, ".png")
+        
+        # Gerar plot
+        withProgress(message = 'Generating PCA plot...', value = 0.5, {
+          p <- pca_plot(
+            plataform = input$metadata_platform,
+            df_name = file_label  # Passamos o rótulo, não um caminho de arquivo
+          )
+          
+          # Salvar temporariamente
+          temp_file <- tempfile(fileext = ".png")
+          
+          # Verificar se o plot é válido
+          if (!inherits(p, "ggplot")) {
+            stop("O objeto gerado não é um gráfico ggplot válido")
+          }
+          
+          ggsave(temp_file, plot = p, device = "png", width = 12, height = 12, dpi = 600)
+          
+          # Forçar download
+          shinyjs::runjs(sprintf(
+            "var link = document.createElement('a');
+          link.href = '%s';
+          link.download = '%s';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);",
+            paste0("data:image/png;base64,", base64enc::base64encode(temp_file)),
+            download_name
+          ))
+        })
+      }
+    }, error = function(e) {
+      showNotification(paste("Erro:", e$message), type = "error", duration = 10)
+    })
+  })
+  # Volcano plot ----
+  observeEvent(input$download_volcano_id, {
+    req(input$download_volcano_id, input$metadata_platform)
+    
+    tryCatch({
+      tbl <- if (input$metadata_platform == "RNAseq") {
+        Sample_annotation_rnaseq_SHINY
+      } else {
+        Sample_annotation_mca_SHINY
+      }
+      
+      study_info <- tbl %>% 
+        filter(cacaoStudyID == input$download_volcano_id)
+      
+      if (nrow(study_info) > 0) {
+        file_label <- if (input$metadata_platform == "RNAseq") {
+          as.character(study_info$file_deg[1])
+        } else {
+          as.character(study_info$file_deg[1])
+        }
+        print(file_label)
+        download_name <- paste0(file_label, "_volcano.png")
+        
+        withProgress(message = 'Generating Volcano plot...', value = 0.5, {
+          # SUPONDO QUE VOCÊ TENHA UMA FUNÇÃO volcano_plot()
+          v <- volcano_plot(
+            plataform = input$metadata_platform,
+            nome = file_label
+          )
+          
+          temp_file <- tempfile(fileext = ".png")
+          ggsave(temp_file, plot = v, device = "png", width = 12, height = 12, dpi = 600)
+          
+          shinyjs::runjs(sprintf(
+            "var link = document.createElement('a');
+          link.href = '%s';
+          link.download = '%s';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);",
+            paste0("data:image/png;base64,", base64enc::base64encode(temp_file)),
+            download_name
+          ))
+        })
+      }
+    }, error = function(e) {
+      showNotification(paste("Erro no Volcano Plot:", e$message), type = "error", duration = 10)
+    })
+  })
+  
   
  
-  
+  #Observer event ----
   observeEvent(input$homeLink,{
     print('link to Home page !!!')
   })
@@ -658,6 +833,10 @@ shinyServer(function(input, output,session) {
   
   observeEvent(input$micro_page, {
     print('Link to Microarray  page !!!')
+  })
+  
+  observeEvent(input$metada_page, {
+    print('Link to Metadata  page !!!')
   })
 
 })
